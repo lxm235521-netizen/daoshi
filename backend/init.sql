@@ -1,5 +1,7 @@
 -- PostgreSQL 建表脚本
 
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- 1. 账号基础表 (users)
 CREATE TYPE user_role AS ENUM ('superadmin', 'manager', 'tutor');
 CREATE TYPE account_status AS ENUM ('active', 'disabled');
@@ -95,6 +97,6 @@ CREATE TRIGGER set_timestamp_users BEFORE UPDATE ON users FOR EACH ROW EXECUTE P
 CREATE TRIGGER set_timestamp_tutor_profiles BEFORE UPDATE ON tutor_profiles FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 CREATE TRIGGER set_timestamp_leads BEFORE UPDATE ON leads FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 
--- 插入一条初始的超级管理员数据 (密码为 Admin@123 的 Bcrypt 加密串)
+-- 插入一条初始的超级管理员数据（密码使用 bcrypt 哈希保存）
 INSERT INTO users (id, email, password_hash, name, role, status, admin_note) 
-VALUES ('00000000-0000-0000-0000-000000000000', 'admin@system.com', '$2a$10$tZ8nLq3d.lB0eGZcM8Gq/OfT7yv7Z6vQ6h9pI1jY4uK1qD/Q6F9.S', '超级管理员', 'superadmin', 'active', '系统初始化生成');
+VALUES ('00000000-0000-0000-0000-000000000000', '735677824@qq.com', '$2b$10$QDPxCQyGn4OS6uHyWmtBaOo0e.R48nByZS2VQMA1p0Gqth.xh.YIO', '超级管理员', 'superadmin', 'active', '系统初始化生成');

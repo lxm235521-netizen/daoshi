@@ -21,6 +21,20 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+app.get('/health', (_req, res) => {
+  res.status(200).json({ status: 'ok' });
+});
+
+app.get('/health/ready', async (_req, res) => {
+  try {
+    await db.query('SELECT 1');
+    res.status(200).json({ status: 'ready', database: 'ok' });
+  } catch (error) {
+    console.error('数据库就绪检查失败', error);
+    res.status(503).json({ status: 'not_ready', database: 'unavailable' });
+  }
+});
+
 // === 游客端开放 API ===
 app.post('/api/auth/login', login);
 app.get('/api/tutors', getPublishedTutors);

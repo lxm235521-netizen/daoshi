@@ -97,6 +97,7 @@ export const getPublishedTutors = async (req: Request, res: Response): Promise<v
     `);
     res.json(result.rows);
   } catch (error) {
+    console.error('获取导师大厅数据失败', error);
     res.status(500).json({ error: '获取导师大厅数据失败' });
   }
 };
