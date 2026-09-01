@@ -1,0 +1,8 @@
+node_modules
+dist
+*.log
+.env
+test_*.js
+fix_*.js
+uploads/*
+!uploads/.gitkeep
