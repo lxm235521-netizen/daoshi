@@ -11,6 +11,7 @@ backend/*.js
 backend/src/**/*.js
 backend/src/**/*.js.map
 backend/src/**/*.d.ts
+backend/src/**/*.d.ts.map
 backend/test_*.js
 frontend/node_modules/
 frontend/dist/
