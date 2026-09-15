@@ -119,6 +119,12 @@ CREATE TRIGGER set_timestamp_tutor_profiles BEFORE UPDATE ON tutor_profiles FOR 
 CREATE TRIGGER set_timestamp_leads BEFORE UPDATE ON leads FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 CREATE TRIGGER set_timestamp_courses BEFORE UPDATE ON courses FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 
--- 插入一条初始的超级管理员数据（密码使用 bcrypt 哈希保存）
+-- 初始超级管理员（口令使用 bcrypt 哈希保存）
+-- 说明：后端启动时会确保 admin / quege 两个超级管理员账号存在（见 backend/src/config/migrations.ts），
+-- 此处仅为全新部署时预置，两者均为幂等写入，不会覆盖已修改过的口令。
 INSERT INTO users (id, email, password_hash, name, role, status, admin_note) 
-VALUES ('00000000-0000-0000-0000-000000000000', 'admin', '$2b$10$hCeKU8xq40gJeh7f43gRh.ZwGcE5TnLBXB8nvJYMEhgWNglBQcaMq', '超级管理员', 'superadmin', 'active', '系统初始化生成');
+VALUES
+  ('00000000-0000-0000-0000-000000000000', 'admin', '$2b$10$hCeKU8xq40gJeh7f43gRh.ZwGcE5TnLBXB8nvJYMEhgWNglBQcaMq', '超级管理员', 'superadmin', 'active', '系统初始化生成'),
+  ('00000000-0000-0000-0000-000000000001', 'quege', '$2b$10$NFvxGcYZ6FMuOULMu7bFMOb5uGL57LYAZpgX4zI2Bumv.wxhgfQ0W', '超级管理员', 'superadmin', 'active', '系统初始化生成')
+ON CONFLICT (email) DO NOTHING;
+
