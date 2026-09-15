@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Users, UserPlus, Search, ShieldCheck, Shield, ShieldAlert, LogOut, Menu, Eye, EyeOff, ExternalLink, X, ArrowLeft, BookOpen } from 'lucide-react';
+import { Users, UserPlus, Search, ShieldCheck, Shield, ShieldAlert, LogOut, Menu, Eye, EyeOff, ExternalLink, X, ArrowLeft, BookOpen, Pencil } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { resolveLeadCoursePrice } from '../content/coursePrice';
 import { CourseManager } from '../components/CourseManager';
+import { TutorEditor } from '../components/TutorEditor';
 
 type Role = 'superadmin' | 'manager' | 'tutor';
 type AccountStatus = 'active' | 'disabled';
@@ -461,6 +462,7 @@ export const AdminDashboard: React.FC = () => {
   const [createUserModalOpen, setCreateUserModalOpen] = useState(false);
   const [createUserForm, setCreateUserForm] = useState({ name: '', email: '', password: '', role: 'tutor' as 'manager' | 'tutor', note: '' });
   const [showCreatePassword, setShowCreatePassword] = useState(false);
+  const [editingTutorId, setEditingTutorId] = useState<string | null>(null);
 
   const navigate = useNavigate();
 
@@ -788,6 +790,9 @@ export const AdminDashboard: React.FC = () => {
                               <td className="px-4 py-4 text-right md:px-5">
                                 {(currentUser?.role === 'superadmin' || user.role === 'tutor') ? (
                                   <div className="flex items-center justify-end gap-2">
+                                    {user.role === 'tutor' && (
+                                      <button onClick={() => setEditingTutorId(user.id)} className={`${BTN_SM} !border-[#101114] !bg-[#d9ff4f] !text-[#101114]`}><Pencil size={13} /> 编辑资料</button>
+                                    )}
                                     <button onClick={() => { setSelectedUser(user); setResetModalOpen(true); }} className={BTN_SM}>重置密码</button>
                                     <button onClick={() => handleToggleStatus(user)} className={user.status === 'active' ? BTN_SM : `${BTN_SM} !border-[#101114] !bg-[#d9ff4f] !text-[#101114]`}>
                                       {user.status === 'active' ? '禁用账号' : '解封账号'}
@@ -823,6 +828,15 @@ export const AdminDashboard: React.FC = () => {
           </div>
         </main>
       </div>
+
+      {/* 管理员直接编辑导师资料 */}
+      <TutorEditor
+        userId={editingTutorId}
+        token={token}
+        onClose={() => setEditingTutorId(null)}
+        onSaved={fetchUsers}
+        onNotify={showToastMsg}
+      />
 
       {/* 移动端侧边栏 */}
       <AnimatePresence>

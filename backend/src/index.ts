@@ -7,7 +7,7 @@ import { login } from './controllers/authController';
 import { getAllUsers, createUser, resetPassword, toggleUserStatus, updateAdminNote, togglePublish } from './controllers/usersController';
 import { createLead, getAdminLeads, getTutorLeads, assignLead } from './controllers/leadsController';
 import { getPublishedCourses, getAllCourses, createCourse, updateCourse, toggleCourseActive, deleteCourse } from './controllers/coursesController';
-import { getPublishedTutors, getFeaturedTutors, getTutorProfile, submitProfileDraft, approveAudit, rejectAudit, getAudits, applyTutor, checkEmail } from './controllers/tutorsController';
+import { getPublishedTutors, getFeaturedTutors, getTutorProfile, submitProfileDraft, approveAudit, rejectAudit, getAudits, applyTutor, checkEmail, getTutorDetailForAdmin, updateTutorProfileByAdmin } from './controllers/tutorsController';
 import { uploadFile } from './controllers/uploadController';
 import { upload } from './middlewares/upload';
 import { ensureRuntimeSchema } from './config/migrations';
@@ -75,6 +75,10 @@ const startServer = async () => {
   app.post('/api/admin/audits/:id/approve', authenticate, requireRoles(['superadmin', 'manager']), approveAudit);
   app.post('/api/admin/audits/:id/reject', authenticate, requireRoles(['superadmin', 'manager']), rejectAudit);
   app.get('/api/admin/audits', authenticate, requireRoles(['superadmin', 'manager']), getAudits);
+
+  // 管理员直接维护导师资料（与导师提交审核的字段一致，改完立即生效）
+  app.get('/api/admin/tutors/:id', authenticate, requireRoles(['superadmin', 'manager']), getTutorDetailForAdmin);
+  app.put('/api/admin/tutors/:id/profile', authenticate, requireRoles(['superadmin', 'manager']), updateTutorProfileByAdmin);
 
   app.get('/api/admin/courses', authenticate, requireRoles(['superadmin', 'manager']), getAllCourses);
   app.post('/api/admin/courses', authenticate, requireRoles(['superadmin', 'manager']), createCourse);

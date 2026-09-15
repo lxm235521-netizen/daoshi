@@ -330,6 +330,159 @@ export const getAudits = async (req: AuthRequest, res: Response): Promise<void> 
   }
 };
 
+/** 管理员：读取某个导师用于编辑的完整资料 */
+export const getTutorDetailForAdmin = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const result = await db.query(`
+      SELECT u.id, u.email, u.name AS account_name, u.status,
+             p.display_name, p.title, p.avatar_url, p.bio_text, p.tags_json,
+             p.is_published, p.is_featured,
+             COALESCE((
+               SELECT json_agg(json_build_object(
+                 'type', CASE WHEN w.type::text = 'video_link' THEN 'video' ELSE 'image' END,
+                 'url', w.url,
+                 'raw', w.raw_video_url
+               ) ORDER BY w.sort_order, w.id)
+               FROM tutor_works w WHERE w.profile_id = p.id
+             ), '[]'::json) AS works
+      FROM users u
+      LEFT JOIN tutor_profiles p ON p.user_id = u.id
+      WHERE u.id = $1 AND u.role = 'tutor'
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: '导师不存在' });
+      return;
+    }
+
+    const row = result.rows[0];
+    res.json({
+      id: row.id,
+      email: row.email,
+      accountName: row.account_name,
+      accountStatus: row.status,
+      hasProfile: row.display_name !== null,
+      name: row.display_name || row.account_name || '',
+      title: row.title || '',
+      avatar: row.avatar_url || '',
+      bio: row.bio_text || '',
+      tags: row.tags_json || [],
+      works: row.works || [],
+      isPublished: row.is_published || false,
+      isFeatured: row.is_featured || false
+    });
+  } catch (error) {
+    console.error('获取导师资料失败', error);
+    res.status(500).json({ error: '获取导师资料失败' });
+  }
+};
+
+/** 管理员：直接修改导师资料（与导师提交审核字段一致，改完立即生效） */
+export const updateTutorProfileByAdmin = async (req: AuthRequest, res: Response): Promise<void> => {
+  const client = await db.connect();
+  try {
+    const { id } = req.params;
+    const { name, title, avatar, bio, tags, works, isPublished, isFeatured } = req.body;
+
+    const userRes = await client.query(`SELECT id, name FROM users WHERE id = $1 AND role = 'tutor'`, [id]);
+    if (userRes.rows.length === 0) {
+      res.status(404).json({ error: '导师不存在' });
+      return;
+    }
+
+    if (typeof name !== 'string' || !name.trim()) {
+      res.status(400).json({ error: '请填写导师昵称' });
+      return;
+    }
+    if (typeof title !== 'string' || !title.trim()) {
+      res.status(400).json({ error: '请填写一句话头衔' });
+      return;
+    }
+
+    const normalizedTags = normalizeTags(tags);
+    const worksInput = Array.isArray(works) ? works : [];
+
+    await client.query('BEGIN');
+
+    // 先取当前资料状态：未显式传入的上架/精选开关沿用原值，避免「一编辑就下架、掉精选」
+    const currentRes = await client.query(
+      `SELECT is_published, is_featured FROM tutor_profiles WHERE user_id = $1 FOR UPDATE`,
+      [id]
+    );
+    const current = currentRes.rows[0] || {};
+    const nextPublished = isPublished === undefined ? Boolean(current.is_published) : Boolean(isPublished);
+    const nextFeatured = isFeatured === undefined ? Boolean(current.is_featured) : Boolean(isFeatured);
+
+    // 同一事务内先把该导师挂起的审核置为已驳回，避免之后审核通过又把管理员的手改覆盖掉
+    const invalidated = await client.query(
+      `UPDATE audit_requests
+       SET status = 'rejected', processed_at = NOW()
+       WHERE user_id = $1 AND status = 'pending'
+       RETURNING id`,
+      [id]
+    );
+
+    const profileRes = await client.query(
+      `INSERT INTO tutor_profiles (user_id, display_name, title, avatar_url, bio_text, tags_json, is_published, is_featured)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (user_id) DO UPDATE SET
+         display_name = EXCLUDED.display_name,
+         title = EXCLUDED.title,
+         avatar_url = EXCLUDED.avatar_url,
+         bio_text = EXCLUDED.bio_text,
+         tags_json = EXCLUDED.tags_json,
+         is_published = EXCLUDED.is_published,
+         is_featured = EXCLUDED.is_featured
+       RETURNING id`,
+      [
+        id,
+        name.trim(),
+        title.trim(),
+        typeof avatar === 'string' ? avatar.trim() : '',
+        typeof bio === 'string' ? bio.trim() : '',
+        JSON.stringify(normalizedTags),
+        nextPublished,
+        nextFeatured
+      ]
+    );
+    const profileId = profileRes.rows[0].id;
+
+    // 作品全量替换，避免逐条 diff
+    await client.query(`DELETE FROM tutor_works WHERE profile_id = $1`, [profileId]);
+    let sortOrder = 0;
+    for (const work of worksInput) {
+      const url = typeof work?.url === 'string' ? work.url.trim() : '';
+      if (!url) continue;
+      const workType = work?.type === 'video' || work?.type === 'video_link' ? 'video_link' : 'image';
+      await client.query(
+        `INSERT INTO tutor_works (profile_id, type, url, raw_video_url, sort_order) VALUES ($1, $2, $3, $4, $5)`,
+        [profileId, workType, url, typeof work?.raw === 'string' ? work.raw : null, sortOrder]
+      );
+      sortOrder += 1;
+    }
+
+    // 账号显示名称与导师昵称保持一致，后台用户管理列表才不会两个名字
+    if (userRes.rows[0].name !== name.trim()) {
+      await client.query(`UPDATE users SET name = $1 WHERE id = $2`, [name.trim(), id]);
+    }
+
+    await client.query('COMMIT');
+
+    res.json({
+      message: invalidated.rows.length > 0
+        ? '导师资料已更新，该导师原有的待审核资料已自动驳回'
+        : '导师资料已更新'
+    });
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('管理员更新导师资料失败', error);
+    res.status(500).json({ error: '更新导师资料失败' });
+  } finally {
+    client.release();
+  }
+};
+
 export const toggleFeatured = async (req: AuthRequest, res: Response): Promise<void> => {
   try {
     const { id } = req.params;
