@@ -5,11 +5,11 @@ import { AuthRequest } from '../middlewares/auth';
 // 游客提交报名
 export const createLead = async (req: Request, res: Response): Promise<void> => {
   try {
-    const { wechat, level, request, timeNote, intentTutorId } = req.body;
+    const { wechat, level, request, timeNote, intentTutorId, courseName, courseCode, coursePrice } = req.body;
     await db.query(
-      `INSERT INTO leads (wechat_qq, level, learning_request, time_note, intent_tutor_id) 
-       VALUES ($1, $2, $3, $4, $5)`,
-      [wechat, level, request, timeNote, intentTutorId || null]
+      `INSERT INTO leads (wechat_qq, level, learning_request, time_note, intent_tutor_id, course_name, course_code, course_price) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
+      [wechat, level, request, timeNote, intentTutorId || null, courseName || null, courseCode || null, coursePrice || null]
     );
     res.json({ message: '报名成功，等待管理员联系' });
   } catch (error) {

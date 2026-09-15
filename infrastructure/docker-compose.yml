@@ -1,0 +1,38 @@
+# 独立部署 PostgreSQL（可选）
+#
+# 本文件不包含任何服务器地址与口令，全部通过同目录的 .env 注入：
+#   cp .env.example .env   然后按实际情况填写
+#
+# Compose 会自动读取「与本文件同级目录」下的 .env，无需 -e/--env-file。
+#
+# 说明：后端不使用 Redis（无依赖、源码零引用），因此这里只部署 PostgreSQL。
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: daoshi-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?请在 .env 中设置 POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 .env 中设置 POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:?请在 .env 中设置 POSTGRES_DB}
+      TZ: Asia/Shanghai
+
+    ports:
+      # INTERNAL_BIND 决定允许谁来连：127.0.0.1 仅本机；0.0.0.0 允许外部（需配防火墙/安全组）
+      - "${INTERNAL_BIND:?请在 .env 中设置 INTERNAL_BIND}:${POSTGRES_HOST_PORT:-5432}:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # 复用后端的单一 schema 来源，避免基础设施侧出现第二份过期结构
+      - ../backend/init.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  postgres_data:

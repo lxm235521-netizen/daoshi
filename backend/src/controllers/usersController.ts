@@ -8,7 +8,7 @@ import { AuthRequest } from '../middlewares/auth';
 export const getAllUsers = async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await db.query(`
-      SELECT u.id, u.email, u.name, u.role, u.status, u.admin_note as note, u.last_login_at as "lastLogin", tp.is_published
+      SELECT u.id, u.email, u.name, u.role, u.status, u.admin_note as note, u.last_login_at as "lastLogin", tp.is_published, tp.is_featured
       FROM users u
       LEFT JOIN tutor_profiles tp ON u.id = tp.user_id 
       ORDER BY 
@@ -157,5 +157,22 @@ export const togglePublish = async (req: AuthRequest, res: Response): Promise<vo
     res.json({ message: isPublished ? '已上架展厅' : '已下架隐藏' });
   } catch (error) {
     res.status(500).json({ error: '操作失败' });
+  }
+};
+
+export const toggleFeatured = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { isFeatured } = req.body;
+    const targetId = typeof id === 'string' ? id : '';
+    if (!await canManageTargetUser(req, res, targetId)) return;
+    const result = await db.query('UPDATE tutor_profiles SET is_featured = $1 WHERE user_id = $2 RETURNING id', [isFeatured, targetId]);
+    if (result.rows.length === 0) {
+      res.status(400).json({ error: '该导师尚未通过首次入驻审核，无法设置精选' });
+      return;
+    }
+    res.json({ message: isFeatured ? '已设为精选导师' : '已取消精选导师' });
+  } catch (error) {
+    res.status(500).json({ error: '精选操作失败' });
   }
 };

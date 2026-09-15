@@ -1,0 +1,36 @@
+# 服务器端 PostgreSQL 部署（本文件不含任何地址与口令，全部由同目录 .env 注入）
+#
+# 用法：把本目录拷到服务器（例如 /opt/daoshi-db/），然后
+#   cp .env.example .env    # 填入真实凭据
+#   docker compose up -d
+#
+# 项目名由 .env 中的 COMPOSE_PROJECT_NAME 决定，数据卷名会带上该前缀。
+# 说明：后端不使用 Redis（无依赖、源码零引用），因此这里只部署 PostgreSQL。
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: daoshi-postgres
+    restart: unless-stopped
+
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:?请在 .env 中设置 POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?请在 .env 中设置 POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:?请在 .env 中设置 POSTGRES_DB}
+      TZ: Asia/Shanghai
+
+    ports:
+      # 端口固定与项目约定一致：宿主机 5433 → 容器 5432
+      - "${POSTGRES_HOST_PORT:-5433}:5432"
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+volumes:
+  postgres_data:

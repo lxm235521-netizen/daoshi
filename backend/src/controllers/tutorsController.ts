@@ -85,7 +85,7 @@ export const applyTutor = async (req: Request, res: Response): Promise<void> => 
 export const getPublishedTutors = async (req: Request, res: Response): Promise<void> => {
   try {
     const result = await db.query(`
-      SELECT p.user_id as id, p.display_name as name, p.title, p.avatar_url as avatar, p.bio_text as bio, p.tags_json as tags,
+      SELECT p.user_id as id, p.display_name as name, p.title, p.avatar_url as avatar, p.bio_text as bio, p.tags_json as tags, p.is_featured,
              COALESCE(
                json_agg(json_build_object('type', CASE WHEN w.type::text = 'video_link' THEN 'video' ELSE 'image' END, 'url', w.url, 'raw', w.raw_video_url)) 
                FILTER (WHERE w.id IS NOT NULL), '[]'
@@ -99,6 +99,27 @@ export const getPublishedTutors = async (req: Request, res: Response): Promise<v
   } catch (error) {
     console.error('获取导师大厅数据失败', error);
     res.status(500).json({ error: '获取导师大厅数据失败' });
+  }
+};
+
+export const getFeaturedTutors = async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const result = await db.query(`
+      SELECT p.user_id as id, p.display_name as name, p.title, p.avatar_url as avatar, p.bio_text as bio, p.tags_json as tags, p.is_featured,
+             COALESCE(
+               json_agg(json_build_object('type', CASE WHEN w.type::text = 'video_link' THEN 'video' ELSE 'image' END, 'url', w.url, 'raw', w.raw_video_url))
+               FILTER (WHERE w.id IS NOT NULL), '[]'
+             ) as works
+      FROM tutor_profiles p
+      LEFT JOIN tutor_works w ON p.id = w.profile_id
+      WHERE p.is_published = true AND p.is_featured = true
+      GROUP BY p.id, p.user_id
+      ORDER BY p.updated_at DESC
+    `);
+    res.json(result.rows);
+  } catch (error) {
+    console.error('获取精选导师失败', error);
+    res.status(500).json({ error: '获取精选导师失败' });
   }
 };
 
@@ -306,5 +327,21 @@ export const getAudits = async (req: AuthRequest, res: Response): Promise<void> 
     res.json(result.rows);
   } catch (error) {
     res.status(500).json({ error: '获取审核列表失败' });
+  }
+};
+
+export const toggleFeatured = async (req: AuthRequest, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    const { isFeatured } = req.body;
+    const targetId = typeof id === 'string' ? id : '';
+    const result = await db.query('UPDATE tutor_profiles SET is_featured = $1 WHERE user_id = $2 RETURNING id', [!!isFeatured, targetId]);
+    if (result.rows.length === 0) {
+      res.status(400).json({ error: '该导师尚未建立资料，无法设置精选展示' });
+      return;
+    }
+    res.json({ message: isFeatured ? '已设为精选导师' : '已取消精选导师' });
+  } catch (error) {
+    res.status(500).json({ error: '精选状态更新失败' });
   }
 };

@@ -11,132 +11,26 @@ export interface TutorCardProps {
   works: any[];
   onEnrollClick: () => void;
   onProfileClick: () => void;
+  featured?: boolean;
 }
 
-export const TutorCard: React.FC<TutorCardProps> = ({ name, title, avatar, tags, works, onEnrollClick, onProfileClick }) => {
+export const TutorCard: React.FC<TutorCardProps> = ({ name, title, avatar, tags, works, onEnrollClick, onProfileClick, featured }) => {
   const [lightboxWork, setLightboxWork] = useState<any>(null);
+  const handleWorkClick = (e: React.MouseEvent, work: any) => { e.stopPropagation(); setLightboxWork(work); };
+  const handleEnrollClick = (e: React.MouseEvent) => { e.stopPropagation(); onEnrollClick(); };
 
-  const handleWorkClick = (e: React.MouseEvent, work: any) => {
-    e.stopPropagation();
-    setLightboxWork(work);
-  };
+  return <>
+    <motion.div onClick={onProfileClick} whileHover={{ y: -6 }} transition={{ duration: 0.25, ease: 'easeOut' }} className="group flex cursor-pointer flex-col overflow-hidden border border-[#101114]/15 bg-white">
+      <div className="flex h-full flex-col gap-5 p-5">
+        <div className="flex items-start justify-between gap-4"><div className="flex items-center gap-4"><div className="h-16 w-16 overflow-hidden border border-[#101114]/15 bg-[#eeeae0]"><img src={avatar || '/assets/mentor.jpg'} alt={name} className="h-full w-full object-cover" onError={(event) => { event.currentTarget.src = '/assets/mentor.jpg'; }} /></div><div><div className="flex items-center gap-2"><h3 className="text-lg font-black text-[#101114]">{name}</h3><BadgeCheck size={15} className="text-[#ff5a45]" /></div><p className="mt-1 line-clamp-1 text-sm text-[#4d4e49]">{title || '漫剧创作导师'}</p></div></div>{featured && <span className="border border-[#101114] bg-[#d9ff4f] px-2 py-1 text-[11px] font-black text-[#101114]">精选</span>}</div>
+        <div className="flex flex-wrap gap-2">{tags.map((tag, index) => <span key={index} className="border border-[#101114]/15 bg-[#f7f4ec] px-2.5 py-1 text-xs font-bold text-[#101114]">{tag}</span>)}</div>
+        <div className="flex items-center gap-4 text-xs text-[#777871]"><span className="inline-flex items-center gap-1.5"><ImageIcon size={13} className="text-[#ff5a45]" /> {works.length} 份作品</span><span className="inline-flex items-center gap-1.5"><span className="h-1 w-1 bg-[#101114]" /> 资料已审核</span></div>
+        <div className="mt-auto border-t border-[#101114]/10 pt-4"><div className="mb-3 flex items-center justify-between text-xs text-[#777871]"><span className="inline-flex items-center gap-1"><Star size={12} className="text-[#ff5a45]" /> 精选作品</span><button onClick={handleEnrollClick} className="inline-flex items-center gap-1 border border-[#101114]/15 px-3 py-1.5 font-bold text-[#101114] transition-colors hover:bg-[#101114] hover:text-white">直接报名 <ChevronRight size={12} /></button></div><div className="grid grid-cols-3 gap-2">{works.slice(0, 3).map((work, idx) => { const isVideo = work.type === 'video'; const imgUrl = typeof work === 'string' ? work : (work.url || ''); return <div key={idx} onClick={(e) => handleWorkClick(e, work)} className="relative aspect-square overflow-hidden border border-[#101114]/10 bg-[#f2efe6]">{!isVideo ? <img src={imgUrl} alt="导师作品" className="h-full w-full object-cover opacity-85 transition-transform duration-500 hover:scale-110" onError={(event) => { event.currentTarget.style.display = 'none'; }} /> : <div className="flex h-full w-full flex-col items-center justify-center bg-[#101114] text-[10px] font-bold text-white"><Play size={15} fill="currentColor" /> 视频</div>}<div className="absolute inset-0 flex items-center justify-center bg-black/35 opacity-0 transition-opacity hover:opacity-100"><span className="text-white text-[10px] font-medium">{isVideo ? '播放' : '放大'}</span></div></div>; })}</div></div>
+      </div>
+    </motion.div>
 
-  const handleEnrollClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onEnrollClick();
-  }
-
-  return (
-    <>
-      <motion.div
-        onClick={onProfileClick}
-        whileHover={{ y: -8, scale: 1.02 }}
-        transition={{ duration: 0.3, ease: 'easeOut' }}
-        className="tutor-card relative group overflow-hidden rounded-2xl border backdrop-blur-sm cursor-pointer"
-      >
-        <div className="absolute -inset-px bg-gradient-to-r from-purple-500/0 via-purple-500/40 to-purple-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-        
-        <div className="tutor-card-surface relative h-full p-5 flex flex-col gap-4 z-10 rounded-2xl">
-          <div className="flex items-center gap-4">
-            <div className="tutor-card-avatar relative w-16 h-16 rounded-full overflow-hidden border-2 transition-colors">
-              <img src={avatar} alt={name} className="w-full h-full object-cover" />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2"><h3 className="tutor-card-title text-lg font-bold transition-colors">{name}</h3><BadgeCheck size={15} className="tutor-card-verified" /></div>
-              <p className="tutor-card-muted text-sm line-clamp-1">{title || '漫剧创作导师'}</p>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {tags.map((tag, index) => (
-              <span key={index} className="tutor-card-tag px-2.5 py-1 text-xs font-medium rounded-full border">
-                {tag}
-              </span>
-            ))}
-          </div>
-
-          <div className="tutor-card-muted flex items-center gap-4 text-xs">
-            <span className="inline-flex items-center gap-1.5"><ImageIcon size={13} className="tutor-card-accent" /> {works.length} 份作品</span>
-            <span className="inline-flex items-center gap-1.5"><span className="tutor-card-dot h-1 w-1 rounded-full" /> 资料已审核</span>
-          </div>
-
-          <div className="tutor-card-footer mt-auto pt-4 border-t">
-            <div className="tutor-card-muted flex items-center justify-between text-xs mb-2">
-              <span className="flex items-center gap-1"><Star size={12}/> 精选作品</span>
-              <button 
-                onClick={handleEnrollClick}
-                className="tutor-card-action flex items-center gap-1 transition-colors font-medium z-20 relative px-3 py-1.5 rounded-full"
-              >
-                直接报名 <ChevronRight size={12}/>
-              </button>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              {works.slice(0, 3).map((work, idx) => {
-                const isVideo = work.type === 'video';
-                const imgUrl = typeof work === 'string' ? work : (work.url || '');
-                return (
-                  <div 
-                    key={idx} 
-                    onClick={(e) => handleWorkClick(e, work)}
-                    className="tutor-card-media aspect-square rounded-md overflow-hidden relative group/work z-20 flex items-center justify-center"
-                  >
-                    {!isVideo ? (
-                      <img src={imgUrl} alt="导师作品" className="w-full h-full object-cover opacity-80 group-hover/work:opacity-100 group-hover/work:scale-110 transition-all duration-500" />
-                    ) : (
-                      <div className="tutor-card-video text-[10px] font-bold w-full h-full flex flex-col gap-1 items-center justify-center"><Play size={15} fill="currentColor" /> 视频</div>
-                    )}
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/work:opacity-100 transition-opacity flex items-center justify-center">
-                      <span className="text-white text-[10px] font-medium">{isVideo ? '播放' : '放大'}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      </motion.div>
-
-      {/* 独立的作品大图浏览（暗房模式） */}
-      <AnimatePresence>
-        {lightboxWork && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={(e) => { e.stopPropagation(); setLightboxWork(null); }}
-            className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 p-4"
-          >
-            <button 
-              className="absolute top-6 right-6 p-2 bg-white/10 rounded-full text-white hover:bg-white/20 transition-colors z-[80]"
-              onClick={(e) => { e.stopPropagation(); setLightboxWork(null); }}
-            >
-              <X size={24} />
-            </button>
-            
-            {lightboxWork.type === 'video' ? (
-              <motion.div 
-                initial={{ scale: 0.9 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.9 }}
-                className="w-full max-w-4xl aspect-video rounded-lg shadow-2xl bg-black overflow-hidden relative"
-                onClick={(e) => e.stopPropagation()}
-              >
-                <iframe src={lightboxWork.url} className="w-full h-full border-0" allowFullScreen></iframe>
-              </motion.div>
-            ) : (
-              <motion.img 
-                initial={{ scale: 0.9 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0.9 }}
-                src={typeof lightboxWork === 'string' ? lightboxWork : lightboxWork.url} 
-                className="max-w-full max-h-[90vh] rounded-lg shadow-2xl" 
-                alt="作品预览"
-                onClick={(e) => e.stopPropagation()} 
-              />
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </>
-  );
+    <AnimatePresence>
+      {lightboxWork && <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={e => { e.stopPropagation(); setLightboxWork(null); }} className="fixed inset-0 z-[70] flex items-center justify-center bg-[#101114]/90 p-4"><button aria-label="关闭作品预览" className="absolute right-6 top-6 grid h-10 w-10 place-items-center border border-white/20 bg-white/10 text-white transition-colors hover:bg-[#d9ff4f] hover:text-[#101114]" onClick={e => { e.stopPropagation(); setLightboxWork(null); }}><X size={20} /></button>{lightboxWork.type === 'video' ? <motion.div initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} className="relative aspect-video w-full max-w-4xl overflow-hidden bg-black shadow-2xl" onClick={e => e.stopPropagation()}><iframe src={lightboxWork.url} className="h-full w-full border-0" allowFullScreen /></motion.div> : <motion.img initial={{ scale: 0.9 }} animate={{ scale: 1 }} exit={{ scale: 0.9 }} src={typeof lightboxWork === 'string' ? lightboxWork : lightboxWork.url} className="max-h-[90vh] max-w-full shadow-2xl" alt="作品预览" onClick={e => e.stopPropagation()} />}</motion.div>}
+    </AnimatePresence>
+  </>;
 };

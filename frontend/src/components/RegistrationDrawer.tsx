@@ -1,13 +1,24 @@
-import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { X, Sparkles, Send } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import { ArrowRight, CheckCircle2, X } from 'lucide-react';
 import axios from 'axios';
+import type { CourseInfo } from '../content/courses';
 
 export interface Tutor { id: number | string; name: string; title: string; avatar: string; bio?: string; tags: string[]; works: any[]; fullWorks?: any[]; }
 
-interface RegistrationDrawerProps { isOpen: boolean; onClose: () => void; tutor: Tutor | null; }
+interface RegistrationDrawerProps {
+  isOpen: boolean;
+  onClose: () => void;
+  tutor: Tutor | null;
+  course?: CourseInfo | null;
+  courses?: CourseInfo[];
+  tutors?: Tutor[];
+  onTutorChange?: (tutor: Tutor | null) => void;
+}
 
-export const RegistrationDrawer: React.FC<RegistrationDrawerProps> = ({ isOpen, onClose, tutor }) => {
+export const RegistrationDrawer: React.FC<RegistrationDrawerProps> = ({ isOpen, onClose, tutor, course, courses = [], tutors = [], onTutorChange }) => {
+  const [selectedTutorId, setSelectedTutorId] = useState(tutor ? String(tutor.id) : '');
+  const [selectedCourseCode, setSelectedCourseCode] = useState(course?.code || '');
   const [level, setLevel] = useState('');
   const [request, setRequest] = useState('');
   const [wechat, setWechat] = useState('');
@@ -16,100 +27,55 @@ export const RegistrationDrawer: React.FC<RegistrationDrawerProps> = ({ isOpen, 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const handleClose = () => {
-    setSubmitted(false);
-    setLevel(''); setRequest(''); setWechat(''); setTimeNote(''); setError('');
-    onClose();
-  };
+  useEffect(() => {
+    setSelectedTutorId(tutor ? String(tutor.id) : '');
+    setSelectedCourseCode(course?.code || '');
+  }, [tutor, course, isOpen]);
+
+  const selectedTutor = tutors.find(item => String(item.id) === selectedTutorId) || tutor || null;
+  const selectedCourse = courses.find(item => item.code === selectedCourseCode) || course || null;
+  const handleClose = () => { setSubmitted(false); setLevel(''); setRequest(''); setWechat(''); setTimeNote(''); setError(''); setSelectedCourseCode(''); onClose(); };
+  const handleTutorChange = (value: string) => { setSelectedTutorId(value); onTutorChange?.(tutors.find(item => String(item.id) === value) || null); };
 
   const submitForm = async () => {
-    if (!level || !request || !wechat) {
-      setError('请完整填写基础水平、学习诉求和联系方式');
-      return;
-    }
-    setError('');
-    setIsSubmitting(true);
-    
+    if (!selectedCourse) { setError('请先选择一门课程'); return; }
+    if (!selectedTutor) { setError('请先选择一位导师'); return; }
+    if (!level || !request || !wechat) { setError('请完整填写基础水平、学习诉求和联系方式'); return; }
+    setError(''); setIsSubmitting(true);
     try {
-      await axios.post('/api/leads', {
-        wechat,
-        level,
-        request,
-        timeNote,
-        intentTutorId: tutor?.id
-      });
+      await axios.post('/api/leads', { wechat, level, request, timeNote, intentTutorId: selectedTutor.id, courseName: selectedCourse.title, courseCode: selectedCourse.code, coursePrice: selectedCourse.price });
       setSubmitted(true);
-    } catch (err) {
-      setError('网络请求失败，请稍后再试');
-    } finally {
-      setIsSubmitting(false);
-    }
+    } catch (err: any) { setError(err.response?.data?.error || '网络请求失败，请稍后再试'); } finally { setIsSubmitting(false); }
   };
 
   return (
     <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleClose} className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40" />
-          <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="fixed top-0 right-0 h-full w-full max-w-md bg-[#09090b]/95 border-l border-white/10 z-50 p-6 sm:p-8 overflow-y-auto shadow-2xl">
-            {!submitted ? (
-              <div className="flex flex-col min-h-full">
-                <div className="flex items-center justify-between mb-8">
-                  <h2 className="text-xl font-bold text-gray-100 flex items-center gap-2"><Sparkles className="text-purple-400" size={20} /> 预约导师</h2>
-                  <button onClick={handleClose} className="p-2 rounded-full hover:bg-white/10 transition-colors text-gray-400 hover:text-white"><X size={20} /></button>
-                </div>
-
-                {tutor && (
-                  <div className="flex items-center gap-4 p-4 rounded-xl bg-white/5 border border-white/10 mb-8">
-                    <img src={tutor.avatar} alt={tutor.name} className="w-12 h-12 rounded-full object-cover border border-white/20" />
-                    <div><p className="text-xs text-gray-400">正在报名</p><p className="font-bold text-gray-100">{tutor.name} 的门下</p></div>
-                  </div>
-                )}
-
-                <div className="flex-1 flex flex-col gap-6">
-                  {error && <div className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-lg">{error}</div>}
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-3">目前的水平是？<span className="text-red-500">*</span></label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {['零基础小白', '有一定基础'].map((lvl) => (
-                        <button key={lvl} onClick={() => setLevel(lvl)} className={`p-3 rounded-xl border text-sm font-medium transition-all ${level === lvl ? 'border-purple-500 bg-purple-500/20 text-purple-200' : 'border-white/10 bg-white/5 text-gray-400 hover:bg-white/10 hover:text-gray-200'}`}>{lvl}</button>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">想学什么 / 学习诉求<span className="text-red-500">*</span></label>
-                    <textarea rows={3} value={request} onChange={(e)=>setRequest(e.target.value)} placeholder="例如：想系统学习爆款短剧剧本的结构..." className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-500/70 focus:bg-white/10 transition-all resize-none text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">联系方式 (微信 / QQ)<span className="text-red-500">*</span></label>
-                    <input type="text" value={wechat} onChange={(e)=>setWechat(e.target.value)} placeholder="方便导师加您的微信号/QQ" className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-500/70 focus:bg-white/10 transition-all text-sm" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">联系时间备注</label>
-                    <input type="text" value={timeNote} onChange={(e)=>setTimeNote(e.target.value)} placeholder="例如：工作日晚上8点后" className="w-full p-4 rounded-xl bg-white/5 border border-white/10 text-gray-200 placeholder-gray-600 focus:outline-none focus:border-purple-500/70 focus:bg-white/10 transition-all text-sm" />
-                  </div>
-                </div>
-
-                <div className="mt-8 pt-6 border-t border-white/5">
-                  <button onClick={submitForm} disabled={isSubmitting} className="w-full py-4 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-bold flex items-center justify-center gap-2 hover:opacity-90 transition-opacity shadow-[0_0_20px_rgba(147,51,234,0.3)] disabled:opacity-50">
-                    {isSubmitting ? '提交中...' : '提交报名'} <Send size={18} />
-                  </button>
-                </div>
+      {isOpen && <>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={handleClose} className="fixed inset-0 z-[90] bg-[#101114]/55 backdrop-blur-sm" />
+        <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} transition={{ type: 'spring', damping: 25, stiffness: 200 }} className="public-drawer fixed right-0 top-0 z-[100] h-full w-full max-w-md overflow-y-auto border-l border-[#101114]/15 bg-[#f7f4ec] p-6 text-[#101114] shadow-2xl sm:p-8">
+          {!submitted ? <div className="flex min-h-full flex-col">
+            <div className="mb-8 flex items-start justify-between gap-5"><div><p className="text-xs font-bold tracking-[0.18em] text-[#777871]">学习报名</p><h2 className="mt-2 text-2xl font-black">{selectedCourse?.title || '预约报名'}</h2></div><button type="button" onClick={handleClose} aria-label="关闭报名窗口" className="grid h-11 w-11 shrink-0 place-items-center border border-[#101114]/15 bg-white transition-colors hover:bg-[#101114] hover:text-white"><X size={18} /></button></div>
+            <div className="flex-1 space-y-6">
+              <div>
+                <label htmlFor="registration-course" className="mb-2 block text-sm font-bold">选择课程<span className="text-[#ff5a45]"> *</span></label>
+                <select id="registration-course" value={selectedCourseCode} onChange={e => setSelectedCourseCode(e.target.value)} className="w-full border border-[#101114]/20 bg-white px-4 py-3 text-sm outline-none focus:border-[#101114]">
+                  <option value="">请选择课程</option>
+                  {courses.map(item => <option key={item.code} value={item.code}>{item.title} · ¥{item.price}</option>)}
+                </select>
+                {selectedCourse && <p className="mt-2 text-xs leading-5 text-[#777871]">{selectedCourse.duration}</p>}
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center h-full text-center">
-                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', damping: 15 }} className="w-20 h-20 rounded-full bg-green-500/10 flex items-center justify-center mb-6">
-                  <Sparkles className="text-green-400" size={32} />
-                </motion.div>
-                <h2 className="text-2xl font-bold text-gray-100 mb-4">报名已提交！</h2>
-                <p className="text-gray-400 mb-8 leading-relaxed text-sm">管理员小姐姐已经收到您的请求，<br/>我们会尽快通过微信/QQ与您联系并分配导师。</p>
-                <button onClick={handleClose} className="px-8 py-3 rounded-full bg-white/5 border border-white/10 text-gray-300 hover:bg-white/10 transition-colors text-sm font-medium">关闭窗口</button>
-              </div>
-            )}
-          </motion.div>
-        </>
-      )}
+              {tutors.length > 0 && <div><label htmlFor="registration-tutor" className="mb-2 block text-sm font-bold">选择导师<span className="text-[#ff5a45]"> *</span></label><select id="registration-tutor" value={selectedTutorId} onChange={e => handleTutorChange(e.target.value)} className="w-full border border-[#101114]/20 bg-white px-4 py-3 text-sm outline-none focus:border-[#101114]"><option value="">请选择导师</option>{tutors.map(item => <option key={item.id} value={String(item.id)}>{item.name} · {item.title || '漫剧创作导师'}</option>)}</select></div>}
+              {selectedTutor && <div className="flex items-center gap-4 border border-[#101114]/15 bg-[#d9ff4f] p-4"><img src={selectedTutor.avatar || '/assets/mentor.jpg'} alt={selectedTutor.name} className="h-12 w-12 object-cover" /><div><p className="text-xs text-[#4d4e49]">意向导师</p><p className="font-black">{selectedTutor.name}</p></div></div>}
+              {error && <div className="border border-[#ff5a45]/40 bg-[#ff5a45]/10 p-3 text-sm leading-6 text-[#9f2e21]" role="alert">{error}</div>}
+              <div><p className="mb-3 text-sm font-bold">目前的水平<span className="text-[#ff5a45]"> *</span></p><div className="grid grid-cols-2 gap-3">{['零基础小白', '有一定基础'].map(item => <button type="button" key={item} onClick={() => setLevel(item)} className={`border px-3 py-3 text-sm font-semibold transition-colors ${level === item ? 'border-[#101114] bg-[#101114] text-white' : 'border-[#101114]/15 bg-white text-[#4d4e49] hover:border-[#101114]'}`}>{item}</button>)}</div></div>
+              <div><label htmlFor="registration-request" className="mb-2 block text-sm font-bold">想解决什么问题<span className="text-[#ff5a45]"> *</span></label><textarea id="registration-request" value={request} onChange={e => setRequest(e.target.value)} placeholder="例如：想把自己的小说做成一支短预告片" rows={4} className="w-full resize-none border border-[#101114]/15 bg-white px-4 py-3 text-sm leading-6 outline-none focus:border-[#101114]" /></div>
+              <div><label htmlFor="registration-contact" className="mb-2 block text-sm font-bold">微信 / QQ<span className="text-[#ff5a45]"> *</span></label><input id="registration-contact" value={wechat} onChange={e => setWechat(e.target.value)} placeholder="填写方便联系你的账号" className="w-full border border-[#101114]/15 bg-white px-4 py-3 text-sm outline-none focus:border-[#101114]" /></div>
+              <div><label htmlFor="registration-time" className="mb-2 block text-sm font-bold">方便联系的时间</label><input id="registration-time" value={timeNote} onChange={e => setTimeNote(e.target.value)} placeholder="例如：工作日 19:00 后" className="w-full border border-[#101114]/15 bg-white px-4 py-3 text-sm outline-none focus:border-[#101114]" /></div>
+            </div>
+            <button type="button" onClick={submitForm} disabled={isSubmitting} className="mt-8 inline-flex w-full items-center justify-center gap-3 bg-[#101114] px-5 py-4 text-sm font-bold text-white transition-colors hover:bg-[#ff5a45] disabled:cursor-not-allowed disabled:bg-[#aeb0a9]">{isSubmitting ? '提交中...' : '提交报名'} <ArrowRight size={17} /></button>
+          </div> : <div className="flex min-h-full flex-col items-center justify-center text-center"><CheckCircle2 size={58} className="text-[#ff5a45]" /><h2 className="mt-6 text-3xl font-black">报名已提交</h2><p className="mt-4 max-w-xs text-sm leading-7 text-[#4d4e49]">管理员已经收到你的学习意向，会根据课程和导师尽快联系你。</p><button type="button" onClick={handleClose} className="mt-10 border border-[#101114] bg-[#d9ff4f] px-5 py-3 text-sm font-bold transition-colors hover:bg-[#101114] hover:text-white">返回浏览</button></div>}
+        </motion.div>
+      </>}
     </AnimatePresence>
   );
 };

@@ -1,4 +1,22 @@
 services:
+  # 数据库使用外部服务（见 .env 中的 DATABASE_URL）。
+  # 后端未使用 Redis（无依赖、源码零引用），因此这里不部署 Redis。
+  # 如需恢复本机自建数据库，请启用下方注释的 postgres 服务，并把 .env 的地址改回 postgres:5432。
+  #
+  # postgres:
+  #   image: postgres:15-alpine
+  #   restart: unless-stopped
+  #   environment:
+  #     POSTGRES_USER: ${POSTGRES_USER:-root}
+  #     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_this_postgres_password}
+  #     POSTGRES_DB: ${POSTGRES_DB:-manju_community}
+  #     TZ: Asia/Shanghai
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #     - ./backend/init.sql:/docker-entrypoint-initdb.d/001-schema.sql:ro
+  #   networks:
+  #     - manju_net
+
   backend:
     build:
       context: ./backend
@@ -6,11 +24,10 @@ services:
     restart: always
     environment:
       DATABASE_URL: ${DATABASE_URL}
-      REDIS_URL: ${REDIS_URL}
       JWT_SECRET: ${JWT_SECRET}
       PORT: 5000
     ports:
-      - "5000:5000"
+      - "${API_PORT:-5000}:5000"
     volumes:
       - uploads:/app/uploads
     networks:
@@ -27,7 +44,7 @@ services:
       dockerfile: Dockerfile
     restart: always
     ports:
-      - "3002:80"
+      - "${WEB_PORT:-3002}:80"
     depends_on:
       backend:
         condition: service_healthy
@@ -35,6 +52,8 @@ services:
       - manju_net
 
 volumes:
+  # 外部数据库模式下不再使用，保留以便随时切回本机部署
+  postgres_data:
   uploads:
 
 networks:

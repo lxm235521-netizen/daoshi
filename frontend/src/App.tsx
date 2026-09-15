@@ -4,24 +4,21 @@ import { AdminDashboard } from './pages/AdminDashboard';
 import { TutorWorkspace } from './pages/TutorWorkspace';
 import { Login } from './pages/Login';
 import { Apply } from './pages/Apply';
-import { ThemeProvider } from './theme/ThemeProvider';
-import { ThemeSwitcher } from './components/ThemeSwitcher';
+import { Tutors } from './pages/Tutors';
 
 function App() {
   return (
-    <ThemeProvider>
-      <Router>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/apply" element={<Apply />} />
-          <Route path="/admin" element={<AdminDashboard />} />
-          <Route path="/tutor" element={<TutorWorkspace />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-        <ThemeSwitcher />
-      </Router>
-    </ThemeProvider>
+    <Router>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/apply" element={<Apply />} />
+        <Route path="/tutors" element={<Tutors />} />
+        <Route path="/admin" element={<AdminDashboard />} />
+        <Route path="/tutor" element={<TutorWorkspace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Router>
   );
 }
 

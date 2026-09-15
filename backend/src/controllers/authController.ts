@@ -6,10 +6,15 @@ import { db } from '../config/database';
 export const login = async (req: Request, res: Response): Promise<void> => {
   try {
     const { email, password, loginRole } = req.body;
+    const identifier = typeof email === 'string' ? email.trim().toLowerCase() : '';
+    if (!identifier || typeof password !== 'string' || !password) {
+      res.status(400).json({ error: '请输入账号和密码' });
+      return;
+    }
     
-    const result = await db.query('SELECT * FROM users WHERE email = $1', [email]);
+    const result = await db.query('SELECT * FROM users WHERE LOWER(email) = $1', [identifier]);
     if (result.rows.length === 0) {
-      res.status(401).json({ error: '邮箱或密码错误' });
+      res.status(401).json({ error: '账号或密码错误' });
       return;
     }
     
@@ -28,7 +33,7 @@ export const login = async (req: Request, res: Response): Promise<void> => {
 
     const isMatch = await bcrypt.compare(password, user.password_hash);
     if (!isMatch) {
-      res.status(401).json({ error: '邮箱或密码错误' });
+      res.status(401).json({ error: '账号或密码错误' });
       return;
     }
 

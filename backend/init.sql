@@ -29,6 +29,7 @@ CREATE TABLE tutor_profiles (
   bio_text TEXT,
   tags_json JSONB DEFAULT '[]'::jsonb,
   is_published BOOLEAN NOT NULL DEFAULT false,
+  is_featured BOOLEAN NOT NULL DEFAULT false,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -72,6 +73,9 @@ CREATE TABLE leads (
   learning_request TEXT NOT NULL,
   time_note VARCHAR(100),
   intent_tutor_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  course_name VARCHAR(100),
+  course_code VARCHAR(50),
+  course_price VARCHAR(20),
   
   status lead_global_status NOT NULL DEFAULT 'pending',
   assigned_tutor_id UUID REFERENCES users(id) ON DELETE SET NULL,
@@ -92,11 +96,29 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- 6. 课程展示表 (courses) 后台可维护，前端展示页读取
+CREATE TABLE IF NOT EXISTS courses (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  code VARCHAR(50) NOT NULL UNIQUE,
+  title VARCHAR(120) NOT NULL,
+  badge VARCHAR(50) NOT NULL DEFAULT '',
+  duration VARCHAR(120) NOT NULL DEFAULT '',
+  price VARCHAR(20) NOT NULL DEFAULT '',
+  summary TEXT NOT NULL DEFAULT '',
+  details JSONB NOT NULL DEFAULT '[]'::jsonb,
+  fit VARCHAR(200) NOT NULL DEFAULT '',
+  sort_order INTEGER NOT NULL DEFAULT 0,
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
 -- 为需要的表添加更新触发器
 CREATE TRIGGER set_timestamp_users BEFORE UPDATE ON users FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 CREATE TRIGGER set_timestamp_tutor_profiles BEFORE UPDATE ON tutor_profiles FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 CREATE TRIGGER set_timestamp_leads BEFORE UPDATE ON leads FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
+CREATE TRIGGER set_timestamp_courses BEFORE UPDATE ON courses FOR EACH ROW EXECUTE PROCEDURE trigger_set_timestamp();
 
 -- 插入一条初始的超级管理员数据（密码使用 bcrypt 哈希保存）
 INSERT INTO users (id, email, password_hash, name, role, status, admin_note) 
-VALUES ('00000000-0000-0000-0000-000000000000', '735677824@qq.com', '$2b$10$QDPxCQyGn4OS6uHyWmtBaOo0e.R48nByZS2VQMA1p0Gqth.xh.YIO', '超级管理员', 'superadmin', 'active', '系统初始化生成');
+VALUES ('00000000-0000-0000-0000-000000000000', 'admin', '$2b$10$hCeKU8xq40gJeh7f43gRh.ZwGcE5TnLBXB8nvJYMEhgWNglBQcaMq', '超级管理员', 'superadmin', 'active', '系统初始化生成');

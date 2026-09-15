@@ -1,21 +1,37 @@
+# ---------- 环境变量与密钥 ----------
 .env
 .env.*
-!.env.example
-*.log
-.codex-*.patch
-fix_*.js
-apply_*.js
-update_*.js
-remove_*.js
-backend/*.js
+# 注意：否定模式必须写成 **/ 形式，否则只能取消同层目录的忽略，
+# 子目录下的 .env.example（如 infrastructure/）会被静默漏掉。
+!**/.env.example
+
+# ---------- 依赖与构建产物 ----------
+node_modules/
+dist/
+*.tsbuildinfo
+
+# ---------- 后端编译产物（源码同级残留）----------
 backend/src/**/*.js
 backend/src/**/*.js.map
 backend/src/**/*.d.ts
 backend/src/**/*.d.ts.map
-backend/test_*.js
-frontend/node_modules/
-frontend/dist/
-backend/node_modules/
-backend/dist/
+
+# ---------- 运行期数据 ----------
+*.log
 backend/uploads/*
 !backend/uploads/.gitkeep
+
+# ---------- 一次性脚本与补丁（不纳入版本库）----------
+*.patch
+fix_*.js
+apply_*.js
+update_*.js
+remove_*.js
+backend/add_*.js
+backend/test_*.js
+
+# ---------- 编辑器 / 系统 ----------
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

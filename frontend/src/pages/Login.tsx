@@ -50,62 +50,58 @@ export const Login: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#09090b] flex items-center justify-center p-4 relative overflow-hidden font-sans selection:bg-purple-500/30">
-      
-      <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }} transition={{ duration: 8, repeat: Infinity, ease: "easeInOut" }} className="absolute -top-[20%] -left-[10%] w-[50vw] h-[50vw] rounded-full bg-purple-600/30 blur-[120px] pointer-events-none" />
-      <motion.div animate={{ scale: [1, 1.5, 1], opacity: [0.2, 0.4, 0.2] }} transition={{ duration: 10, repeat: Infinity, ease: "easeInOut", delay: 1 }} className="absolute -bottom-[20%] -right-[10%] w-[60vw] h-[60vw] rounded-full bg-blue-600/20 blur-[120px] pointer-events-none" />
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none mix-blend-overlay" style={{ backgroundImage: 'url("https://grainy-gradients.vercel.app/noise.svg")' }}></div>
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#f7f4ec] p-4 font-sans text-[#101114] selection:bg-[#d9ff4f]">
+      <div className="pointer-events-none absolute inset-0 opacity-60" style={{ backgroundImage: 'linear-gradient(rgba(16,17,20,.08) 1px, transparent 1px), linear-gradient(90deg, rgba(16,17,20,.08) 1px, transparent 1px)', backgroundSize: '64px 64px' }} />
 
       <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }} className="w-full max-w-md relative z-10">
-        <div className="bg-[#0a0a0c]/60 backdrop-blur-2xl border border-white/10 p-8 sm:p-10 rounded-[2rem] shadow-2xl relative overflow-hidden">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3/4 h-px bg-gradient-to-r from-transparent via-purple-500/50 to-transparent" />
+        <div className="relative overflow-hidden border border-[#101114]/15 bg-white p-8 shadow-[8px_8px_0_#101114] sm:p-10">
+          <div className="absolute left-0 top-0 h-1 w-full bg-[#d9ff4f]" />
 
           <div className="text-center mb-8">
-            <div className="w-16 h-16 mx-auto bg-gradient-to-br from-purple-500 to-blue-500 rounded-2xl flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(147,51,234,0.3)]">
+            <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center border border-[#101114] bg-[#101114]">
               <SparklesIcon />
             </div>
-            <h1 className="text-2xl font-bold text-white tracking-tight mb-2">欢迎回到漫剧社区</h1>
-            <p className="text-sm text-gray-500">连接创意，创造无限可能</p>
+            <h1 className="mb-2 text-2xl font-black tracking-tight">欢迎回到漫剧社区</h1>
+            <p className="text-sm text-[#777871]">连接创意，创造无限可能</p>
           </div>
 
-          <div className="bg-black/50 p-1 rounded-xl flex relative mb-8 border border-white/5">
-            <div className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-[#1c1c22] rounded-lg border border-white/10 shadow-lg transition-transform duration-300 ease-in-out ${role === 'tutor' ? 'translate-x-0' : 'translate-x-[calc(100%+8px)]'}`} />
-            <button type="button" onClick={() => setRole('tutor')} className={`flex-1 py-2.5 text-sm font-medium z-10 transition-colors ${role === 'tutor' ? 'text-white' : 'text-gray-500 hover:text-gray-300'}`}>导师登录</button>
-            <button type="button" onClick={() => setRole('admin')} className={`flex-1 py-2.5 text-sm font-medium z-10 transition-colors flex items-center justify-center gap-1.5 ${role === 'admin' ? 'text-white' : 'text-gray-500 hover:text-gray-300'}`}>管理员入口</button>
+          <div className="relative mb-8 flex border border-[#101114]/15 bg-[#eeeae0] p-1">
+            <div className={`absolute bottom-1 top-1 w-[calc(50%-4px)] border border-[#101114] bg-[#d9ff4f] transition-transform duration-300 ease-in-out ${role === 'tutor' ? 'translate-x-0' : 'translate-x-[calc(100%+8px)]'}`} />
+            <button type="button" onClick={() => setRole('tutor')} className="z-10 flex-1 py-2.5 text-sm font-bold text-[#101114]">导师登录</button>
+            <button type="button" onClick={() => setRole('admin')} className="z-10 flex flex-1 items-center justify-center gap-1.5 py-2.5 text-sm font-bold text-[#101114]">管理员入口</button>
           </div>
 
           <form onSubmit={handleLogin} className="space-y-5">
             {error && (
-              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="p-3 bg-red-500/10 border border-red-500/20 text-red-400 text-sm rounded-lg text-center">
+              <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} className="border border-[#ff5a45]/30 bg-[#ff5a45]/10 p-3 text-center text-sm text-[#c53c2d]">
                 {error}
               </motion.div>
             )}
             <div>
-              <label className="block text-xs font-medium text-gray-400 mb-2 ml-1">邮箱账号</label>
+              <label className="mb-2 ml-1 block text-xs font-bold text-[#54564f]">{role === 'admin' ? '管理员用户名' : '邮箱账号'}</label>
               <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-purple-400 transition-colors"><Mail size={18} /></div>
-              <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="请输入邮箱账号" required className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-purple-500/50 focus:bg-white/5 transition-all text-sm" />
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-[#777871] transition-colors group-focus-within:text-[#ff5a45]"><Mail size={18} /></div>
+              <input type={role === 'admin' ? 'text' : 'email'} value={email} onChange={(e) => setEmail(e.target.value)} placeholder={role === 'admin' ? '请输入管理员用户名' : '请输入邮箱账号'} autoComplete={role === 'admin' ? 'username' : 'email'} required className="w-full border border-[#101114]/20 bg-[#f7f4ec] py-3 pl-11 pr-4 text-sm text-[#101114] placeholder-[#777871] outline-none transition-all focus:border-[#101114]" />
               </div>
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-2 ml-1 mr-1">
-                <label className="block text-xs font-medium text-gray-400">登录密码</label>
-                {role === 'tutor' && <a href="#" className="text-xs text-purple-400 hover:text-purple-300 transition-colors">忘记密码?</a>}
+                <label className="block text-xs font-bold text-[#54564f]">登录密码</label>
+                {role === 'tutor' && <a href="#" className="text-xs font-bold text-[#ff5a45] transition-colors hover:text-[#101114]">忘记密码?</a>}
               </div>
               <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-purple-400 transition-colors"><Lock size={18} /></div>
-                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required className="w-full bg-black/40 border border-white/10 rounded-xl py-3 pl-11 pr-4 text-white placeholder-gray-600 focus:outline-none focus:border-purple-500/50 focus:bg-white/5 transition-all text-sm tracking-widest" />
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4 text-[#777871] transition-colors group-focus-within:text-[#ff5a45]"><Lock size={18} /></div>
+                <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" required className="w-full border border-[#101114]/20 bg-[#f7f4ec] py-3 pl-11 pr-4 text-sm tracking-widest text-[#101114] placeholder-[#777871] outline-none transition-all focus:border-[#101114]" />
               </div>
             </div>
 
-            <button type="submit" disabled={isSubmitting} className="w-full relative group mt-8">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl opacity-50 group-hover:opacity-100 transition duration-500 blur-sm"></div>
-              <div className="relative flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-blue-600 py-3.5 rounded-xl text-white font-bold text-sm tracking-wide overflow-hidden">
+            <button type="submit" disabled={isSubmitting} className="group mt-8 w-full border border-[#101114] bg-[#d9ff4f] py-3.5 text-sm font-black tracking-wide text-[#101114] transition-colors hover:bg-[#101114] hover:text-white disabled:cursor-not-allowed disabled:opacity-60">
+              <div className="relative flex items-center justify-center gap-2 overflow-hidden">
                 <AnimatePresence mode="wait">
                   {isSubmitting ? (
                     <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2">
-                      <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />验证中...
+                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#101114]/30 border-t-[#101114]" />验证中...
                     </motion.div>
                   ) : (
                     <motion.div key="text" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex items-center gap-2">
@@ -118,11 +114,11 @@ export const Login: React.FC = () => {
           </form>
 
           {role === 'tutor' ? (
-            <p className="text-center text-xs text-gray-500 mt-8">
-              还没有账号？ <button type="button" onClick={() => navigate('/apply')} className="text-purple-400 hover:text-purple-300 font-medium transition-colors">申请入驻</button>
+            <p className="mt-8 text-center text-xs text-[#777871]">
+              还没有账号？ <button type="button" onClick={() => navigate('/apply')} className="font-bold text-[#ff5a45] transition-colors hover:text-[#101114]">申请入驻</button>
             </p>
           ) : (
-            <div className="flex items-center justify-center gap-2 text-center text-xs text-red-400/70 mt-8 bg-red-500/10 py-2 rounded-lg border border-red-500/10">
+            <div className="mt-8 flex items-center justify-center gap-2 border border-[#ff5a45]/20 bg-[#ff5a45]/10 py-2 text-center text-xs text-[#c53c2d]">
               <ShieldAlert size={14} /> 仅限系统超级管理员登录
             </div>
           )}

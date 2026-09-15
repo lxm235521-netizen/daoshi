@@ -1,31 +1,41 @@
 import React, { useState, useEffect } from 'react';
-import { Edit3, Users, Save, Check, Eye, X, Search, Edit2, LogOut, ExternalLink, ShieldCheck, ShieldAlert } from 'lucide-react';
+import { Edit3, Users, Save, Check, Eye, X, Search, Edit2, LogOut, ExternalLink, ShieldCheck, ShieldAlert, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { TutorCard } from '../components/TutorCard';
 import type { Tutor } from '../components/RegistrationDrawer';
+import { resolveLeadCoursePrice } from '../content/coursePrice';
 
 type StudentStatus = 'todo' | 'doing' | 'done';
 const STATUS_LABELS: Record<StudentStatus, { text: string, color: string }> = {
-  todo: { text: '待联系', color: 'bg-yellow-500/10 text-yellow-500' },
-  doing: { text: '沟通教学中', color: 'bg-blue-500/10 text-blue-500' },
-  done: { text: '已完结归档', color: 'bg-green-500/10 text-green-500' }
+  todo: { text: '待联系', color: 'bg-[#d9ff4f] text-[#101114]' },
+  doing: { text: '沟通教学中', color: 'bg-[#101114] text-white' },
+  done: { text: '已完结归档', color: 'bg-white text-[#54564f]' }
 };
 
-interface StudentLead { id: string; wechat: string; request: string; level: string; note: string; status: StudentStatus; assignTime: string; }
+interface StudentLead { id: string; wechat: string; courseName: string; coursePrice: string; request: string; level: string; note: string; status: StudentStatus; assignTime: string; }
 type TutorWorkspaceProfile = Tutor & { bio?: string; email?: string; isPublished?: boolean };
 
 const EMPTY_PROFILE: Tutor = {
   id: '', name: '', title: '', avatar: '', tags: [], works: []
 };
 
+/* ---------- 与首页一致的视觉规范 ---------- */
 
+const PANEL = 'border-2 border-[#101114] bg-white';
+const CARD = 'border-2 border-[#101114] bg-white p-6 md:p-8';
+const INPUT = 'w-full border-2 border-[#101114] bg-white px-3 py-2.5 text-sm text-[#101114] outline-none transition-colors placeholder:text-[#8b8d85] focus:border-[#ff5a45]';
+const FIELD_LABEL = 'mb-1.5 block text-xs font-bold text-[#54564f]';
+const BTN_DARK = 'inline-flex items-center justify-center gap-2 border-2 border-[#101114] bg-[#101114] px-4 py-2 text-xs font-black text-white transition-colors hover:bg-[#ff5a45]';
+const BTN_GHOST = 'inline-flex items-center justify-center gap-2 border-2 border-[#101114] bg-white px-4 py-2 text-xs font-black text-[#101114] transition-colors hover:bg-[#101114] hover:text-white';
+const TABLE_HEAD = 'border-b-2 border-[#101114] bg-[#f7f4ec] text-[11px] font-black uppercase tracking-wider text-[#54564f]';
+const TABLE_ROW = 'border-b border-[#101114]/15 transition-colors hover:bg-[#d9ff4f]/25';
 
 const Toast = ({ message, type }: { message: string, type: 'success' | 'error' }) => (
-  <div className={`fixed top-6 left-1/2 -translate-x-1/2 z-[100] px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 border transition-all animate-in fade-in slide-in-from-top-4 ${type === 'success' ? 'bg-green-50 text-green-800 border-green-200' : 'bg-red-50 text-red-800 border-red-200'}`}>
-    {type === 'success' ? <ShieldCheck size={18} className="text-green-600" /> : <ShieldAlert size={18} className="text-red-600" />}
-    <span className="font-medium text-sm">{message}</span>
+  <div className={`fixed left-1/2 top-6 z-[100] flex -translate-x-1/2 items-center gap-3 border-2 border-[#101114] px-6 py-3 shadow-[6px_6px_0_#101114] animate-in fade-in slide-in-from-top-4 ${type === 'success' ? 'bg-[#d9ff4f] text-[#101114]' : 'bg-[#ff5a45] text-white'}`}>
+    {type === 'success' ? <ShieldCheck size={18} /> : <ShieldAlert size={18} />}
+    <span className="text-sm font-black">{message}</span>
   </div>
 );
 
@@ -35,7 +45,7 @@ const showToastMsg = (msg: string, type: 'success' | 'error' = 'success') => {
 };
 
 export const TutorWorkspace: React.FC = () => {
-  const [toast, setToast] = useState<{message: string, type: 'success'|'error'} | null>(null);
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
     const handler = (e: any) => {
@@ -51,7 +61,7 @@ export const TutorWorkspace: React.FC = () => {
   const token = localStorage.getItem('manju_token');
   const [students, setStudents] = useState<StudentLead[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
-  
+
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [editingNoteValue, setEditingNoteValue] = useState('');
 
@@ -68,11 +78,13 @@ export const TutorWorkspace: React.FC = () => {
       });
       const formatted = res.data.map((lead: any) => ({
         id: lead.id,
-        wechat: lead.wechat_id || lead.qq_id || '未知',
-        request: lead.request_type || '无备注',
+        wechat: lead.wechat_qq || lead.wechat_id || lead.qq_id || '未知',
+        courseName: lead.course_name || '',
+        coursePrice: resolveLeadCoursePrice(lead.course_name, lead.course_price),
+        request: lead.learning_request || lead.request_type || '无备注',
         level: lead.level || '未知',
-        note: lead.note || '',
-        status: lead.status || 'todo',
+        note: lead.tutor_note || lead.note || '',
+        status: lead.tutor_status || 'todo',
         assignTime: lead.assigned_at ? new Date(lead.assigned_at).toLocaleString() : '未知'
       }));
       setStudents(formatted);
@@ -98,7 +110,10 @@ export const TutorWorkspace: React.FC = () => {
 
   const filteredStudents = students.filter(s => {
     const query = searchQuery.toLowerCase();
-    return s.wechat.toLowerCase().includes(query) || s.note.toLowerCase().includes(query) || s.request.toLowerCase().includes(query);
+    return s.wechat.toLowerCase().includes(query)
+      || s.note.toLowerCase().includes(query)
+      || s.request.toLowerCase().includes(query)
+      || s.courseName.toLowerCase().includes(query);
   });
 
   const updateStudentStatus = async (id: string, newStatus: StudentStatus) => {
@@ -132,7 +147,7 @@ export const TutorWorkspace: React.FC = () => {
       });
       setProfile(profileToSave);
       setTagInput('');
-      setIsSaved(true); 
+      setIsSaved(true);
       showToastMsg('提交成功，等待管理员审核', 'success');
       setTimeout(() => setIsSaved(false), 3000);
     } catch (err: any) {
@@ -157,150 +172,239 @@ export const TutorWorkspace: React.FC = () => {
     }));
   };
 
+  const tabs: { key: 'crm' | 'profile'; label: string; icon: React.ReactNode }[] = [
+    { key: 'crm', label: '学员线索管理', icon: <Users size={17} /> },
+    { key: 'profile', label: '个人资料配置', icon: <Edit3 size={17} /> }
+  ];
+
   return (
-    <div className="min-h-screen bg-[#09090b] text-gray-200 flex font-sans">
+    <div className="min-h-screen bg-[#f7f4ec] font-sans text-[#101114]">
       {toast && <Toast message={toast.message} type={toast.type} />}
-      <aside className="w-64 border-r border-white/10 bg-[#0a0a0c] p-6 flex flex-col shrink-0 z-10">
-        <h1 className="text-xl font-black text-white tracking-tight mb-10 flex items-center gap-3">
-          {profile.avatar ? <img src={profile.avatar} alt="导师头像" className="w-8 h-8 rounded-lg object-cover border border-white/20" /> : <div className="w-8 h-8 rounded-lg bg-purple-500/20 border border-white/20" />}
-          导师工作台
-        </h1>
-        <nav className="flex flex-col gap-2 flex-1">
-          <button onClick={() => setActiveTab('crm')} className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'crm' ? 'bg-purple-500/10 text-purple-400' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}><Users size={18} /> 学员线索管理</button>
-          <button onClick={() => setActiveTab('profile')} className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-colors ${activeTab === 'profile' ? 'bg-purple-500/10 text-purple-400' : 'text-gray-500 hover:text-gray-300 hover:bg-white/5'}`}><Edit3 size={18} /> 个人资料配置</button>
-          <button onClick={() => navigate('/')} className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-500 hover:text-purple-300 hover:bg-purple-500/10 transition-colors"><ExternalLink size={18} /> 查看导师展示页</button>
-          <button onClick={() => { localStorage.removeItem('manju_token'); localStorage.removeItem('manju_user'); navigate('/login'); }} className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium text-gray-500 hover:text-red-300 hover:bg-red-500/10 transition-colors"><LogOut size={18} /> 退出登录</button>
-        </nav>
-      </aside>
 
-      <main className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        <header className="h-20 border-b border-white/10 px-8 flex items-center justify-between shrink-0">
-          <h2 className="text-2xl font-bold text-white">{activeTab === 'crm' ? '学员线索管理' : '资料配置中心'}</h2>
-          
-          {activeTab === 'crm' && (
-            <div className="relative w-64">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" size={16} />
-              <input 
-                type="text" 
-                placeholder="搜索微信/QQ、需求、备注..." 
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-[#111113] border border-white/10 rounded-lg text-sm focus:outline-none focus:border-purple-500 transition-colors text-white placeholder:text-gray-600"
-              />
+      <nav className="sticky top-0 z-40 border-b-2 border-[#101114] bg-[#f7f4ec]/95 backdrop-blur-xl">
+        <div className="mx-auto flex h-[70px] max-w-[1600px] items-center justify-between gap-4 px-4 lg:px-6">
+          <div className="flex min-w-0 items-center gap-3">
+            {profile.avatar
+              ? <img src={profile.avatar} alt="导师头像" className="h-9 w-9 border-2 border-[#101114] object-cover" />
+              : <span className="grid h-9 w-9 place-items-center border-2 border-[#101114] bg-[#101114] text-xs font-black text-[#d9ff4f]">师</span>}
+            <div className="min-w-0">
+              <p className="truncate text-sm font-black leading-tight">{profile.name || '导师工作台'}</p>
+              <p className="truncate text-[11px] font-bold text-[#777871]">导师工作台 · {activeTab === 'crm' ? '学员线索管理' : '资料配置中心'}</p>
             </div>
-          )}
-          
-          {activeTab === 'profile' && (
-            <div className="flex gap-4">
-              <button 
-                onClick={() => setIsPreviewMode(!isPreviewMode)}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-white/5 text-gray-300 hover:bg-white/10 transition-colors"
-              >
-                {isPreviewMode ? <><Edit3 size={16} /> 退出预览</> : <><Eye size={16} /> 预览展示页</>}
-              </button>
-              {!isPreviewMode && (
-                <button 
-                  onClick={handleSave}
-                  className="flex items-center gap-2 px-6 py-2 rounded-lg font-medium bg-purple-600 hover:bg-purple-500 text-white transition-all shadow-lg shadow-purple-500/20"
-                >
-                  {isSaved ? <Check size={18} /> : <Save size={18} />}
-                  {isSaved ? '已提交审核' : '提交变更审核'}
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="hidden items-center gap-2 text-[11px] font-black text-[#54564f] sm:flex">
+              {profile.isPublished
+                ? <span className="border-2 border-[#101114] bg-[#d9ff4f] px-2.5 py-1 text-[#101114]">展厅已上架</span>
+                : <span className="border-2 border-[#101114] bg-white px-2.5 py-1">待管理员上架</span>}
+            </div>
+            <button onClick={() => navigate('/')} className={`${BTN_GHOST} hidden md:inline-flex`}><ArrowLeft size={15} /> 返回首页</button>
+          </div>
+        </div>
+      </nav>
+
+      <div className="overflow-hidden border-b-2 border-[#101114] bg-[#d9ff4f]">
+        <div className="ticker-line whitespace-nowrap py-2.5 text-xs font-black">学员线索管理 · 导师备注 · 服务进度 · 资料配置 · 提交审核 · 学员线索管理 · 导师备注 · 服务进度 · 资料配置 · 提交审核 · </div>
+      </div>
+
+      <div className="flex items-stretch">
+        {/* 桌面端侧边栏 */}
+        <aside className="hidden w-[260px] shrink-0 border-r-2 border-[#101114] bg-[#101114] lg:sticky lg:top-[70px] lg:flex lg:h-[calc(100vh-70px)] lg:flex-col lg:self-start">
+          <div className="flex h-[70px] shrink-0 items-center gap-3 border-b-2 border-white/15 px-5">
+            <span className="grid h-8 w-8 -rotate-3 place-items-center bg-[#d9ff4f] text-xs font-black text-[#101114]">导</span>
+            <span className="text-base font-black tracking-tight text-white">导师工作台</span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-4">
+            <p className="mb-2 mt-2 px-2 text-[11px] font-black uppercase tracking-wider text-white/40">工作区</p>
+            <nav className="flex flex-col gap-1.5">
+              {tabs.map(tab => (
+                <button key={tab.key} onClick={() => { setActiveTab(tab.key); setIsPreviewMode(false); }} className={`flex items-center gap-3 px-3 py-3 text-sm font-bold transition-colors ${activeTab === tab.key ? 'bg-[#d9ff4f] text-[#101114]' : 'text-white/70 hover:bg-white/10 hover:text-white'}`}>
+                  {tab.icon} {tab.label}
                 </button>
-              )}
-            </div>
-          )}
-        </header>
+              ))}
+              <button onClick={() => navigate('/')} className="flex items-center gap-3 px-3 py-3 text-sm font-bold text-white/70 transition-colors hover:bg-white/10 hover:text-white"><ExternalLink size={17} /> 查看导师展示页</button>
+            </nav>
+          </div>
+          <div className="shrink-0 border-t-2 border-white/15 p-4">
+            <button onClick={() => { localStorage.removeItem('manju_token'); localStorage.removeItem('manju_user'); navigate('/login'); }} className="flex w-full items-center gap-3 px-3 py-2.5 text-sm font-bold text-white/70 transition-colors hover:bg-[#ff5a45] hover:text-white">
+              <LogOut size={17} /> 退出登录
+            </button>
+          </div>
+        </aside>
 
-        <div className="flex-1 overflow-auto p-8 relative">
-          {activeTab === 'crm' && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-[#0a0a0c] border border-white/5 rounded-2xl overflow-hidden shadow-2xl">
-              <table className="w-full text-sm text-left">
-                <thead className="text-xs text-gray-500 uppercase bg-[#111113] border-b border-white/5">
-                  <tr>
-                    <th className="px-6 py-4 font-semibold">学员联系方式</th>
-                    <th className="px-6 py-4 font-semibold">当前基础</th>
-                    <th className="px-6 py-4 font-semibold">核心需求</th>
-                    <th className="px-6 py-4 font-semibold">导师备注</th>
-                    <th className="px-6 py-4 font-semibold">服务进度</th>
-                    <th className="px-6 py-4 font-semibold text-right">分发时间</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/5">
-                  {filteredStudents.length === 0 ? (
-                    <tr><td colSpan={6} className="px-6 py-12 text-center text-gray-500">没有找到匹配的学员线索</td></tr>
-                  ) : (
-                    filteredStudents.map((student) => (
-                      <tr key={student.id} className="hover:bg-white/[0.02] transition-colors group">
-                        <td className="px-6 py-5">
-                          <div className="font-mono font-medium text-purple-400 mb-1">{student.wechat}</div>
-                        </td>
-                        <td className="px-6 py-5"><span className="px-2 py-1 bg-white/5 text-gray-300 rounded text-xs">{student.level}</span></td>
-                        <td className="px-6 py-5 text-gray-300">{student.request}</td>
-                        
-                        <td className="px-6 py-5 w-64">
-                          {editingNoteId === student.id ? (
-                            <div className="flex items-center gap-2">
-                              <input 
-                                value={editingNoteValue}
-                                onChange={(e) => setEditingNoteValue(e.target.value)}
-                                className="bg-[#111113] border border-purple-500/50 rounded px-2 py-1 text-xs text-white w-full outline-none focus:border-purple-400"
-                                autoFocus
-                                onKeyDown={(e) => e.key === 'Enter' && saveNote(student.id)}
-                              />
-                              <button onClick={() => saveNote(student.id)} className="text-purple-400 hover:text-purple-300"><Check size={14}/></button>
-                              <button onClick={() => setEditingNoteId(null)} className="text-gray-500 hover:text-gray-300"><X size={14}/></button>
-                            </div>
-                          ) : (
-                            <div 
-                              className="group/note flex items-center gap-2 cursor-pointer text-gray-400 hover:text-gray-200"
-                              onClick={() => startEditingNote(student)}
-                            >
-                              <span className={`truncate max-w-[200px] ${!student.note && 'italic opacity-50'}`}>
-                                {student.note || '点击添加备注...'}
-                              </span>
-                              <Edit2 size={12} className="opacity-0 group-hover/note:opacity-100 transition-opacity text-purple-400" />
-                            </div>
-                          )}
-                        </td>
+        <main className="flex min-w-0 flex-1 flex-col">
+          {/* 移动端标签切换 */}
+          <div className="flex gap-2 border-b-2 border-[#101114] bg-white p-3 lg:hidden">
+            {tabs.map(tab => (
+              <button key={tab.key} onClick={() => { setActiveTab(tab.key); setIsPreviewMode(false); }} className={`flex flex-1 items-center justify-center gap-2 border-2 border-[#101114] px-3 py-2 text-xs font-black transition-colors ${activeTab === tab.key ? 'bg-[#d9ff4f] text-[#101114]' : 'bg-white text-[#101114]'}`}>
+                {tab.icon} {tab.label}
+              </button>
+            ))}
+          </div>
 
-                        <td className="px-6 py-5 whitespace-nowrap">
-                          <select 
-                            value={student.status}
-                            onChange={(e) => updateStudentStatus(student.id, e.target.value as StudentStatus)}
-                            className={`bg-transparent outline-none cursor-pointer font-medium text-xs px-2 py-1 rounded appearance-none border border-transparent hover:border-white/10 ${STATUS_LABELS[student.status].color}`}
-                          >
-                            <option value="todo" className="bg-[#111113] text-yellow-500">待联系</option>
-                            <option value="doing" className="bg-[#111113] text-blue-500">沟通教学中</option>
-                            <option value="done" className="bg-[#111113] text-green-500">已完结归档</option>
-                          </select>
-                        </td>
+          <header className="hidden shrink-0 items-center justify-between gap-4 border-b-2 border-[#101114] bg-white px-6 py-5 lg:flex">
+            <h1 className="text-2xl font-black tracking-tight">{activeTab === 'crm' ? '学员线索管理' : '资料配置中心'}</h1>
+            {activeTab === 'crm' && (
+              <div className="relative w-72">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#777871]" size={15} />
+                <input
+                  type="text"
+                  placeholder="搜索微信/QQ、需求、备注..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full border-2 border-[#101114] bg-white py-2 pl-9 pr-3 text-sm text-[#101114] outline-none transition-colors placeholder:text-[#8b8d85] focus:border-[#ff5a45]"
+                />
+              </div>
+            )}
+            {activeTab === 'profile' && (
+              <div className="flex gap-3">
+                <button onClick={() => setIsPreviewMode(!isPreviewMode)} className={BTN_GHOST}>
+                  {isPreviewMode ? <><Edit3 size={15} /> 退出预览</> : <><Eye size={15} /> 预览展示页</>}
+                </button>
+                {!isPreviewMode && (
+                  <button onClick={handleSave} className={BTN_DARK}>
+                    {isSaved ? <Check size={15} /> : <Save size={15} />}
+                    {isSaved ? '已提交审核' : '提交变更审核'}
+                  </button>
+                )}
+              </div>
+            )}
+          </header>
 
-                        <td className="px-6 py-4 text-right text-gray-500 text-xs">
-                          {student.assignTime}
-                        </td>
+          <div className="flex-1 p-4 md:p-6">
+            {activeTab === 'crm' && (
+              <div className="space-y-6">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-[#777871]">学员分配 / 我的线索</span>
+                    <h2 className="mt-1 text-3xl font-black tracking-tight md:text-4xl">学员线索管理</h2>
+                  </div>
+                  <div className="relative w-full sm:hidden">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#777871]" size={15} />
+                    <input
+                      type="text"
+                      placeholder="搜索微信/QQ、需求、备注..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="w-full border-2 border-[#101114] bg-white py-2 pl-9 pr-3 text-sm text-[#101114] outline-none transition-colors placeholder:text-[#8b8d85] focus:border-[#ff5a45]"
+                    />
+                  </div>
+                </div>
+
+                <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className={`${PANEL} overflow-x-auto`}>
+                  <table className="w-full whitespace-nowrap text-left text-sm">
+                    <thead className={TABLE_HEAD}>
+                      <tr>
+                        <th className="px-5 py-4">学员联系方式</th>
+                        <th className="px-5 py-4">报名课程</th>
+                        <th className="px-5 py-4">当前基础</th>
+                        <th className="px-5 py-4">学员诉求</th>
+                        <th className="px-5 py-4">导师备注</th>
+                        <th className="px-5 py-4">服务进度</th>
+                        <th className="px-5 py-4 text-right">分发时间</th>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </motion.div>
-          )}
+                    </thead>
+                    <tbody>
+                      {filteredStudents.length === 0 ? (
+                        <tr><td colSpan={7} className="px-6 py-12 text-center font-bold text-[#777871]">没有找到匹配的学员线索</td></tr>
+                      ) : (
+                        filteredStudents.map((student) => (
+                          <tr key={student.id} className={TABLE_ROW}>
+                            <td className="px-5 py-5">
+                              <div className="font-mono text-sm font-black text-[#ff5a45]">{student.wechat}</div>
+                            </td>
+                            <td className="px-5 py-5">
+                              {student.courseName
+                                ? <div className="flex items-baseline gap-2">
+                                    <span className="font-black text-[#101114]">{student.courseName}</span>
+                                    {student.coursePrice
+                                      ? <span className="whitespace-nowrap font-black text-[#ff5a45]">¥{student.coursePrice}</span>
+                                      : <span className="text-xs font-bold text-[#777871]">价格待确认</span>}
+                                  </div>
+                                : <span className="font-normal italic text-[#777871]">未选择课程</span>}
+                            </td>
+                            <td className="px-5 py-5">
+                              <span className="border-2 border-[#101114] bg-[#f7f4ec] px-2 py-1 text-xs font-bold text-[#54564f]">{student.level}</span>
+                            </td>
+                            <td className="max-w-[220px] whitespace-normal px-5 py-5 text-[#54564f]">{student.request}</td>
 
-          {activeTab === 'profile' && (
-            <div className="relative h-full">
-              <AnimatePresence mode="wait">
-                {!isPreviewMode ? (
-                  
-                    <motion.div key="edit" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="max-w-3xl mx-auto space-y-8 pb-20 pt-8">
-                      <div className="bg-[#111113] p-8 rounded-3xl border border-white/10 shadow-xl">
-                        <h3 className="text-xl font-bold mb-6 flex items-center gap-2 border-b border-white/5 pb-4"><Users className="text-purple-400" /> 基础展示信息</h3>
-                        <div className="flex gap-6">
+                            <td className="w-64 px-5 py-5">
+                              {editingNoteId === student.id ? (
+                                <div className="flex items-center gap-2">
+                                  <input
+                                    value={editingNoteValue}
+                                    onChange={(e) => setEditingNoteValue(e.target.value)}
+                                    className="w-full border-2 border-[#ff5a45] bg-white px-2 py-1 text-xs font-bold text-[#101114] outline-none"
+                                    autoFocus
+                                    onKeyDown={(e) => e.key === 'Enter' && saveNote(student.id)}
+                                  />
+                                  <button onClick={() => saveNote(student.id)} className="border-2 border-[#101114] bg-[#d9ff4f] p-1 text-[#101114]" aria-label="保存备注"><Check size={14} /></button>
+                                  <button onClick={() => setEditingNoteId(null)} className="border-2 border-[#101114] bg-white p-1 text-[#101114]" aria-label="取消编辑备注"><X size={14} /></button>
+                                </div>
+                              ) : (
+                                <button
+                                  type="button"
+                                  className="group/note flex items-center gap-2 text-left text-xs font-bold text-[#54564f] hover:text-[#ff5a45]"
+                                  onClick={() => startEditingNote(student)}
+                                >
+                                  <span className={`max-w-[200px] truncate ${!student.note && 'italic opacity-50'}`}>
+                                    {student.note || '点击添加备注...'}
+                                  </span>
+                                  <Edit2 size={12} className="opacity-0 transition-opacity group-hover/note:opacity-100" />
+                                </button>
+                              )}
+                            </td>
+
+                            <td className="px-5 py-5">
+                              <div className="relative inline-block">
+                                <span className={`pointer-events-none relative z-10 inline-flex items-center whitespace-nowrap border-2 border-[#101114] px-2.5 py-1 text-[11px] font-black ${STATUS_LABELS[student.status].color}`}>
+                                  {STATUS_LABELS[student.status].text}
+                                </span>
+                                <select
+                                  value={student.status}
+                                  onChange={(e) => updateStudentStatus(student.id, e.target.value as StudentStatus)}
+                                  aria-label="服务进度"
+                                  title="切换服务进度"
+                                  className="absolute inset-0 z-20 h-full w-full cursor-pointer appearance-none border-0 bg-transparent text-transparent opacity-0 outline-none"
+                                >
+                                  <option value="todo" className="bg-white text-[#101114]">待联系</option>
+                                  <option value="doing" className="bg-white text-[#101114]">沟通教学中</option>
+                                  <option value="done" className="bg-white text-[#101114]">已完结归档</option>
+                                </select>
+                              </div>
+                            </td>
+
+                            <td className="px-5 py-4 text-right text-xs text-[#777871]">
+                              {student.assignTime}
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </motion.div>
+              </div>
+            )}
+
+            {activeTab === 'profile' && (
+              <div className="relative">
+                <AnimatePresence mode="wait">
+                  {!isPreviewMode ? (
+                    <motion.div key="edit" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 20 }} className="mx-auto max-w-3xl space-y-8 pb-20">
+                      <div>
+                        <span className="text-xs font-bold text-[#777871]">资料配置 / 基础信息</span>
+                        <h2 className="mt-1 text-3xl font-black tracking-tight md:text-4xl">个人资料配置</h2>
+                      </div>
+
+                      <div className={CARD}>
+                        <h3 className="mb-6 flex items-center gap-2 border-b-2 border-[#101114]/15 pb-4 text-lg font-black"><Users size={18} className="text-[#ff5a45]" /> 基础展示信息</h3>
+                        <div className="flex flex-col gap-6 sm:flex-row">
                           <div className="w-32">
-                            <label className="cursor-pointer group block">
-                              <div className="w-32 h-32 rounded-2xl bg-black border border-white/10 overflow-hidden relative group transition-all group-hover:border-purple-500">
-                                <img src={profile.avatar || 'https://via.placeholder.com/150'} alt="导师头像" className="w-full h-full object-cover transition-transform group-hover:scale-105" />
-                                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                                  <span className="text-xs text-white">更换头像</span>
+                            <label className="group block cursor-pointer">
+                              <div className="relative h-32 w-32 overflow-hidden border-2 border-[#101114]">
+                                <img src={profile.avatar || 'https://via.placeholder.com/150'} alt="导师头像" className="h-full w-full object-cover" />
+                                <div className="absolute inset-0 flex items-center justify-center bg-[#101114]/60 opacity-0 transition-opacity group-hover:opacity-100">
+                                  <span className="text-xs font-black text-white">更换头像</span>
                                 </div>
                               </div>
                               <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
@@ -315,22 +419,22 @@ export const TutorWorkspace: React.FC = () => {
                             </label>
                           </div>
                           <div className="flex-1 space-y-4">
-                            <div><label className="block text-xs text-gray-500 mb-1">外显昵称</label><input value={profile.name} onChange={e => setProfile({...profile, name: e.target.value})} className="w-full bg-[#0a0a0c] border border-white/10 rounded-lg px-4 py-2 text-white focus:border-purple-500 outline-none" /></div>
-                            <div><label className="block text-xs text-gray-500 mb-1">一句话头衔</label><input value={profile.title} onChange={e => setProfile({...profile, title: e.target.value})} className="w-full bg-[#0a0a0c] border border-white/10 rounded-lg px-4 py-2 text-white focus:border-purple-500 outline-none" /></div>
+                            <div><label className={FIELD_LABEL}>外显昵称</label><input value={profile.name} onChange={e => setProfile({ ...profile, name: e.target.value })} className={INPUT} /></div>
+                            <div><label className={FIELD_LABEL}>一句话头衔</label><input value={profile.title} onChange={e => setProfile({ ...profile, title: e.target.value })} className={INPUT} /></div>
                           </div>
                         </div>
                       </div>
 
-                      <div className="bg-[#111113] p-8 rounded-3xl border border-white/10 shadow-xl">
-                        <h3 className="text-xl font-bold mb-6 flex items-center gap-2 border-b border-white/5 pb-4"><Edit2 className="text-purple-400" /> 教学标签与简介</h3>
+                      <div className={CARD}>
+                        <h3 className="mb-6 flex items-center gap-2 border-b-2 border-[#101114]/15 pb-4 text-lg font-black"><Edit2 size={18} className="text-[#ff5a45]" /> 教学标签与简介</h3>
                         <div className="space-y-4">
                           <div>
-                            <label className="block text-xs text-gray-500 mb-1">核心教学标签（输入后按回车添加）</label>
-                            <div className="flex flex-wrap items-center gap-2 min-h-[44px] w-full bg-[#0a0a0c] border border-white/10 rounded-lg px-3 py-2 focus-within:border-purple-500">
+                            <label className={FIELD_LABEL}>核心教学标签（输入后按回车添加）</label>
+                            <div className="flex min-h-[46px] w-full flex-wrap items-center gap-2 border-2 border-[#101114] bg-white px-3 py-2 transition-colors focus-within:border-[#ff5a45]">
                               {profile.tags?.map(tag => (
-                                <span key={tag} className="inline-flex items-center gap-1 rounded-full border border-purple-500/30 bg-purple-500/10 px-2.5 py-1 text-xs font-medium text-purple-300">
+                                <span key={tag} className="inline-flex items-center gap-1 border-2 border-[#101114] bg-[#d9ff4f] px-2 py-0.5 text-xs font-black text-[#101114]">
                                   {tag}
-                                  <button type="button" onClick={() => removeTag(tag)} className="text-purple-300/70 hover:text-white" aria-label={`删除标签 ${tag}`}><X size={13} /></button>
+                                  <button type="button" onClick={() => removeTag(tag)} className="text-[#101114]/70 hover:text-[#ff5a45]" aria-label={`删除标签 ${tag}`}><X size={13} /></button>
                                 </span>
                               ))}
                               <input
@@ -342,40 +446,40 @@ export const TutorWorkspace: React.FC = () => {
                                     addTag();
                                   }
                                 }}
-                                className="min-w-[140px] flex-1 bg-transparent px-1 py-1 text-white outline-none placeholder:text-gray-600"
+                                className="min-w-[140px] flex-1 bg-transparent px-1 py-1 text-sm text-[#101114] outline-none placeholder:text-[#8b8d85]"
                                 placeholder={profile.tags?.length ? '继续输入标签' : '例如：动态漫，按回车添加'}
                               />
                             </div>
                           </div>
                           <div>
-                            <label className="block text-xs text-gray-500 mb-1">个人简介</label>
-                            <textarea value={profile.bio || ''} onChange={e => setProfile({...profile, bio: e.target.value})} className="w-full bg-[#0a0a0c] border border-white/10 rounded-lg px-4 py-2 text-white focus:border-purple-500 outline-none resize-none" rows={4} placeholder="介绍你的教学方向和经验" />
+                            <label className={FIELD_LABEL}>个人简介</label>
+                            <textarea value={profile.bio || ''} onChange={e => setProfile({ ...profile, bio: e.target.value })} className={`${INPUT} resize-none`} rows={4} placeholder="介绍你的教学方向和经验" />
                           </div>
                         </div>
                       </div>
 
-                      <div className="bg-[#111113] p-8 rounded-3xl border border-white/10 shadow-xl">
-                        <h3 className="text-xl font-bold mb-6 flex items-center gap-2 border-b border-white/5 pb-4"><Save className="text-purple-400" /> 作品展示库</h3>
+                      <div className={CARD}>
+                        <h3 className="mb-6 flex items-center gap-2 border-b-2 border-[#101114]/15 pb-4 text-lg font-black"><Save size={18} className="text-[#ff5a45]" /> 作品展示库</h3>
                         <div className="space-y-4">
                           {profile.works?.map((work, index) => (
-                            <div key={index} className="flex items-center gap-3 bg-[#0a0a0c] p-3 rounded-lg border border-white/10">
+                            <div key={index} className="flex items-center gap-3 border-2 border-[#101114] bg-[#f7f4ec] p-3">
                               {typeof work === 'string' || !work.type ? (
-                                <img src={typeof work === 'string' ? work : work.url} className="w-16 h-16 object-cover rounded bg-black" />
+                                <img src={typeof work === 'string' ? work : work.url} className="h-16 w-16 border-2 border-[#101114] object-cover" />
                               ) : work.type === 'video' ? (
-                                <div className="w-16 h-16 bg-purple-900/20 text-purple-400 flex items-center justify-center rounded text-xs font-bold border border-purple-500/30">视频</div>
+                                <div className="flex h-16 w-16 items-center justify-center border-2 border-[#101114] bg-[#101114] text-xs font-black text-[#d9ff4f]">视频</div>
                               ) : (
-                                <img src={work.url} className="w-16 h-16 object-cover rounded bg-black" />
+                                <img src={work.url} className="h-16 w-16 border-2 border-[#101114] object-cover" />
                               )}
-                              <div className="flex-1 text-sm text-gray-400 truncate">
+                              <div className="flex-1 truncate text-sm font-bold text-[#54564f]">
                                 {typeof work === 'string' ? work : (work.raw || work.url)}
                               </div>
-                              <button onClick={() => setProfile({...profile, works: profile.works?.filter((_, i) => i !== index)})} className="text-red-500 hover:text-red-400 p-2"><X size={16} /></button>
+                              <button onClick={() => setProfile({ ...profile, works: profile.works?.filter((_, i) => i !== index) })} className="border-2 border-[#101114] bg-white p-2 text-[#ff5a45] transition-colors hover:bg-[#ff5a45] hover:text-white" aria-label="删除作品"><X size={16} /></button>
                             </div>
                           ))}
-                          
-                          <div className="flex gap-2 pt-4 border-t border-white/5">
+
+                          <div className="flex flex-col gap-3 border-t-2 border-[#101114]/15 pt-4 md:flex-row">
                             <label className="flex-1 cursor-pointer">
-                              <div className="w-full bg-purple-600/10 text-purple-400 border border-purple-500/20 hover:bg-purple-600/20 rounded-lg px-4 py-3 text-center text-sm font-medium transition-colors">
+                              <div className="w-full border-2 border-[#101114] bg-[#d9ff4f] px-4 py-3 text-center text-sm font-black text-[#101114] transition-colors hover:bg-[#101114] hover:text-[#d9ff4f]">
                                 + 上传本地图片作品
                               </div>
                               <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
@@ -384,38 +488,50 @@ export const TutorWorkspace: React.FC = () => {
                                 const formData = new FormData(); formData.append('file', file);
                                 try {
                                   const res = await axios.post('/api/tutor/upload', formData, { headers: { Authorization: `Bearer ${token}` } });
-                                  setProfile({...profile, works: [...(profile.works || []), { type: 'image', url: res.data.url }]});
+                                  setProfile({ ...profile, works: [...(profile.works || []), { type: 'image', url: res.data.url }] });
                                 } catch (err) { showToastMsg('作品上传失败', 'error'); }
                               }} />
                             </label>
-                            
-                            <div className="flex-1 flex gap-2">
-                              <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="粘贴哔哩哔哩 / 抖音 / 腾讯视频链接" className="min-w-0 flex-1 bg-[#0a0a0c] border border-blue-500/20 rounded-lg px-3 py-3 text-sm text-white placeholder:text-gray-600 focus:border-blue-400 focus:outline-none" />
+
+                            <div className="flex flex-1 gap-2">
+                              <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="粘贴哔哩哔哩 / 抖音 / 腾讯视频链接" className={`${INPUT} min-w-0 flex-1`} />
                               <button onClick={() => {
                                 const rawUrl = videoUrl.trim();
                                 if (!rawUrl) return;
                                 const bvidMatch = rawUrl.match(/BV[0-9a-zA-Z]+/);
                                 const parsedUrl = bvidMatch ? `//player.bilibili.com/player.html?bvid=${bvidMatch[0]}&page=1&high_quality=1` : rawUrl;
-                                setProfile({...profile, works: [...(profile.works || []), { type: 'video', url: parsedUrl, raw: rawUrl }]});
+                                setProfile({ ...profile, works: [...(profile.works || []), { type: 'video', url: parsedUrl, raw: rawUrl }] });
                                 setVideoUrl('');
-                              }} className="shrink-0 bg-blue-600/10 text-blue-400 border border-blue-500/20 hover:bg-blue-600/20 rounded-lg px-4 py-3 text-sm font-medium transition-colors">添加视频</button>
+                              }} className={`${BTN_DARK} shrink-0 px-6 py-3`}>添加视频</button>
                             </div>
                           </div>
                         </div>
                       </div>
-                    </motion.div>
 
-                ) : (
-                  <motion.div key="preview" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="flex flex-col items-center pb-20">
-                    <div className="mb-8 text-center"><span className="bg-purple-500/20 text-purple-400 px-4 py-1.5 rounded-full text-sm font-bold animate-pulse">👀 预览模式</span></div>
-                    <div className="w-[380px] pointer-events-none"><TutorCard {...profile} onEnrollClick={() => {}} onProfileClick={() => {}} /></div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-        </div>
-      </main>
+                      <div className="flex justify-end gap-3 lg:hidden">
+                        <button onClick={() => setIsPreviewMode(!isPreviewMode)} className={BTN_GHOST}>
+                          {isPreviewMode ? <><Edit3 size={15} /> 退出预览</> : <><Eye size={15} /> 预览展示页</>}
+                        </button>
+                        {!isPreviewMode && (
+                          <button onClick={handleSave} className={BTN_DARK}>
+                            {isSaved ? <Check size={15} /> : <Save size={15} />}
+                            {isSaved ? '已提交审核' : '提交变更审核'}
+                          </button>
+                        )}
+                      </div>
+                    </motion.div>
+                  ) : (
+                    <motion.div key="preview" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="flex flex-col items-center pb-20">
+                      <div className="mb-8 text-center"><span className="animate-pulse border-2 border-[#101114] bg-[#d9ff4f] px-4 py-1.5 text-sm font-black text-[#101114]">👀 预览模式</span></div>
+                      <div className="pointer-events-none w-[380px] max-w-full"><TutorCard {...profile} onEnrollClick={() => { }} onProfileClick={() => { }} /></div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )}
+          </div>
+        </main>
+      </div>
     </div>
   );
 };
