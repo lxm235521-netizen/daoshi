@@ -62,6 +62,14 @@ docker compose down
 
 前端通过 Nginx 将 `/api` 与 `/uploads` 反向代理到后端。上传文件使用 Docker 卷 `uploads` 持久化，数据库使用 `postgres_data` 持久化。
 
+图片上传的权限划分：
+
+| 接口 | 权限 | 用途 |
+| --- | --- | --- |
+| `POST /api/upload` | 需登录（管理员 / 导师） | 后台编辑导师资料、导师工作台 |
+| `POST /api/tutor/upload` | 需登录（仅导师） | 导师工作台 |
+| `POST /api/tutors/apply` | 公开（入驻申请） | 申请页头像随表单一起以 multipart 提交 |
+
 > 后端**不使用 Redis**（无相关依赖、源码零引用），因此默认不部署 Redis。
 
 ## 初始化与演示数据

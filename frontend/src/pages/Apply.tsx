@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowRight, ArrowLeft, Mail, User, Image as ImageIcon, Send, CheckCircle2, Lock } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -10,7 +10,16 @@ export const Apply: React.FC = () => {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [avatarPreview, setAvatarPreview] = useState('');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!avatarFile) { setAvatarPreview(''); return; }
+    const objectUrl = URL.createObjectURL(avatarFile);
+    setAvatarPreview(objectUrl);
+    return () => URL.revokeObjectURL(objectUrl);
+  }, [avatarFile]);
 
   const [formData, setFormData] = useState({
       email: '',
@@ -29,8 +38,20 @@ export const Apply: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError('');
     try {
-      await axios.post('/api/tutors/apply', formData);
+      // 头像随表单一起以 multipart 提交：申请页未登录，不走需鉴权的通用上传接口
+      const fd = new FormData();
+      fd.append('email', formData.email);
+      fd.append('password', formData.password);
+      fd.append('name', formData.name);
+      fd.append('title', formData.title);
+      fd.append('bio', formData.bio || '');
+      fd.append('worksUrl', formData.worksUrl || '');
+      if (avatarFile) fd.append('file', avatarFile);
+      await axios.post('/api/tutors/apply', fd, {
+        headers: { 'content-type': 'multipart/form-data' }
+      });
       setStep(4);
     } catch (err: any) {
       setError(err.response?.data?.error || '申请失败，请稍后重试');
@@ -134,18 +155,18 @@ export const Apply: React.FC = () => {
                       <label className="mb-2 ml-1 block text-xs font-bold text-[#54564f]">头像图片 (点击上传)</label>
                       <label className="cursor-pointer">
                         <div className="flex h-20 w-20 items-center justify-center overflow-hidden border border-[#101114]/20 bg-[#f7f4ec] transition-colors hover:border-[#101114]">
-                          {formData.avatar ? <img src={formData.avatar} className="h-full w-full object-cover"/> : <ImageIcon size={24} className="text-[#777871]"/>}
+                          {avatarPreview ? <img src={avatarPreview} className="h-full w-full object-cover"/> : <ImageIcon size={24} className="text-[#777871]"/>}
                         </div>
-                        <input type="file" className="hidden" accept="image/*" onChange={async (e) => {
+                        <input type="file" className="hidden" accept="image/*" onChange={(e) => {
                           const file = e.target.files?.[0];
-                          if(!file) return;
-                          const fd = new FormData(); fd.append('file', file);
-                          try {
-                            const res = await axios.post('/api/upload', fd);
-                            setFormData({...formData, avatar: res.data.url});
-                          } catch(err) { setError('上传头像失败'); }
+                          if (!file) return;
+                          setAvatarFile(file);
+                          setFormData(prev => ({ ...prev, avatar: file.name }));
                         }} />
                       </label>
+                      <p className="mt-2 text-xs leading-5 text-[#777871]">
+                        {avatarFile ? `已选择：${avatarFile.name}` : '支持 jpg / png，10MB 以内；提交申请时一并上传'}
+                      </p>
                     </div>
                   </div>
                   <div className="mt-12 flex justify-between">

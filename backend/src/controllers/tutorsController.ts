@@ -40,6 +40,10 @@ export const applyTutor = async (req: Request, res: Response): Promise<void> => 
       res.status(400).json({ error: '请完整填写邮箱、密码、昵称和头衔' });
       return;
     }
+
+    // 头像随申请表单一起以 multipart 提交（申请页是未登录状态，不依赖通用上传接口）
+    const uploadedAvatar = (req as Request & { file?: { filename: string } }).file;
+    const avatarPath = uploadedAvatar ? `/uploads/${uploadedAvatar.filename}` : (typeof avatar === 'string' ? avatar.trim() : '');
     
     const existing = await client.query('SELECT id FROM users WHERE LOWER(email) = $1', [email]);
     if (existing.rows.length > 0) {
@@ -61,7 +65,7 @@ export const applyTutor = async (req: Request, res: Response): Promise<void> => 
       name,
       title,
       bio: bio || '这是我的入驻申请',
-      avatar: avatar || 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150',
+      avatar: avatarPath || '',
       tags: ['新人入驻'],
       works: []
     };

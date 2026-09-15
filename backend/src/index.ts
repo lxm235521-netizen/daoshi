@@ -49,7 +49,7 @@ const startServer = async () => {
   app.post('/api/auth/login', login);
   app.get('/api/tutors', getPublishedTutors);
   app.get('/api/tutors/featured', getFeaturedTutors);
-  app.post('/api/tutors/apply', applyTutor);
+  app.post('/api/tutors/apply', upload.single('file'), applyTutor);
   app.post('/api/tutors/check-email', checkEmail);
   app.post('/api/leads', createLead);         // 游客报名表单
   app.get('/api/courses', getPublishedCourses); // 游客端课程展示
@@ -59,7 +59,7 @@ const startServer = async () => {
   app.get('/api/tutor/profile', authenticate, requireRoles(['tutor']), getTutorProfile);
   app.post('/api/tutor/profile/draft', authenticate, requireRoles(['tutor']), submitProfileDraft);
   app.post('/api/tutor/upload', authenticate, requireRoles(['tutor']), upload.single('file'), uploadFile);
-  app.post('/api/upload', upload.single('file'), uploadFile);
+  app.post('/api/upload', authenticate, requireRoles(['superadmin', 'manager', 'tutor']), upload.single('file'), uploadFile);
 
   // === 超级管理员 & 平台管理员 API ===
   app.get('/api/admin/users', authenticate, requireRoles(['superadmin', 'manager']), getAllUsers);
